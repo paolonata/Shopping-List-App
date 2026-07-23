@@ -76,7 +76,7 @@ fun AddFromTextScreen(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val spoken = result.data
-                ?.getStringArrayListExtra(RecognizerIntent.RESULTS_RECOGNITION)
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                 ?.firstOrNull()
                 ?.trim()
             if (!spoken.isNullOrEmpty()) {
