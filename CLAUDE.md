@@ -37,15 +37,36 @@ Progetto Gradle multi-modulo (Kotlin, version catalog in `gradle/libs.versions.t
   - `MainActivity` — gestisce anche l'intent `ACTION_SEND` (text/plain) con cui
     WhatsApp condivide il testo → apre direttamente la schermata di anteprima.
 
+### Input vocale (dettatura)
+`AddFromTextScreen` ha un pulsante **🎤 Detta** che usa il riconoscimento
+vocale di sistema via `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` (lingua
+`it-IT`) attraverso `rememberLauncherForActivityResult`. Il testo trascritto
+viene **aggiunto su una nuova riga** e passa nel parser esistente. Niente chiavi
+API né costi; su telefoni moderni funziona offline. Manifest: serve il blocco
+`<queries>` per `android.speech.action.RECOGNIZE_SPEECH` (package visibility su
+Android 11+). NB: una singola dettatura continua torna senza virgole → il
+consiglio all'utente è dettare **un articolo alla volta** (oppure editare le
+virgole a mano; l'anteprima è live). Approcci scartati per ora: Whisper
+on-device (APK enorme, build nativa non testabile in locale) e STT cloud
+(chiave API + privacy).
+
 ## 3. Stile / design
 
-Design ispirato a **Todoist** (l'utente lo ha chiesto esplicitamente):
-- Palette **rossa Todoist** `#DC4C3E` (dark: `#E5675A`) su superfici
-  bianche/scure pulite. **Niente dynamic color** (sovrascriveva il brand).
-- Checkbox **circolari**: cerchio vuoto (`Icons.Outlined.RadioButtonUnchecked`)
-  → spunta piena rossa (`Icons.Filled.CheckCircle`).
-- Righe pulite con **separatori sottili** (`HorizontalDivider`), top bar bianca
-  senza ombra, **FAB rotondo** rosso, empty state centrato.
+Look **vibrante e moderno** (l'utente ha bocciato la prima versione bianca/rossa
+piatta come "sciapa"):
+- **Gradiente di brand** corallo→lampone `#FF6A5E → #F5325B` (in
+  `theme/Theme.kt`, esposto da `brandGradient()`), usato su **header "hero"**,
+  **FAB** ed empty state. Primary vibrante `#F5325B` (dark: `#FF7286`).
+  **Niente dynamic color**.
+- **Header hero** a gradiente con titolo, testo "X di Y nel carrello" e
+  `LinearProgressIndicator` bianco; angoli inferiori arrotondati.
+- Articoli come **card arrotondate** (`Surface` shape 16dp + `shadowElevation`)
+  su sfondo grigio chiaro, con spaziatura; niente più righe piatte con divider.
+- Checkbox **circolari**: `Icons.Outlined.RadioButtonUnchecked` →
+  `Icons.Filled.CheckCircle` (primary). Quantità in **pill** colorata
+  (primary @12% alpha). FAB rotondo a gradiente con ombra.
+- Storia: prima versione Todoist "pulita" (commit `c080283`) giudicata troppo
+  timida → restyle vibrante con gradiente.
 
 ### Icona
 - Generata via script Python con **supersampling** (nessun tool grafico

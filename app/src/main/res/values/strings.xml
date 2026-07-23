@@ -10,11 +10,16 @@
     <string name="home_section_to_buy">Da comprare</string>
     <string name="home_section_in_cart">Nel carrello</string>
     <string name="home_delete_item_cd">Elimina articolo</string>
+    <string name="home_progress">%1$d di %2$d nel carrello</string>
 
-    <string name="add_title">Incolla il messaggio WhatsApp</string>
+    <string name="add_title">Nuova lista</string>
     <string name="add_hint">Es: Acqua bambini, pollo pannato/nuggets, iogurt Danone, 2 pere, 2 mele…</string>
-    <string name="add_paste_button">Incolla dagli appunti</string>
-    <string name="add_clear_button">Cancella testo</string>
+    <string name="add_paste_button">Incolla</string>
+    <string name="add_clear_button">Cancella</string>
+    <string name="add_dictate_button">Detta</string>
+    <string name="add_dictate_prompt">Dì la lista, o un articolo alla volta</string>
+    <string name="add_dictate_hint">Suggerimento: detta un articolo alla volta per separarli meglio. Puoi comunque modificare il testo prima di confermare.</string>
+    <string name="add_speech_unavailable">Riconoscimento vocale non disponibile su questo telefono</string>
     <string name="add_preview_title">Anteprima (%1$d articoli)</string>
     <string name="add_preview_empty">Scrivi o incolla del testo per vedere l\'anteprima della lista.</string>
     <string name="add_confirm_button">Aggiungi %1$d articoli alla lista</string>
