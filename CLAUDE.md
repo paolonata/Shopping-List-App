@@ -55,11 +55,15 @@ on-device (APK enorme, build nativa non testabile in locale) e STT cloud
 Look **vibrante e moderno** (l'utente ha bocciato la prima versione bianca/rossa
 piatta come "sciapa"):
 - **Gradiente di brand** corallo→lampone `#FF6A5E → #F5325B` (in
-  `theme/Theme.kt`, esposto da `brandGradient()`), usato su **header "hero"**,
-  **FAB** ed empty state. Primary vibrante `#F5325B` (dark: `#FF7286`).
-  **Niente dynamic color**.
-- **Header hero** a gradiente con titolo, testo "X di Y nel carrello" e
-  `LinearProgressIndicator` bianco; angoli inferiori arrotondati.
+  `theme/Theme.kt`, esposto da `brandGradient()`), usato **con parsimonia**:
+  solo su **FAB**, empty state e pulsante di conferma. Primary vibrante
+  `#F5325B` (dark: `#FF7286`). **Niente dynamic color**.
+- **Header piatto** (NON a gradiente): l'utente ha bocciato il primo header
+  "hero" a gradiente come "orrenda pillola colorata" (troppo acceso in dark).
+  Ora è titolo su sfondo normale (`onBackground`), testo "X di Y nel carrello"
+  in grigio e `LinearProgressIndicator` sottile in `primary` come unico accento.
+  Lezione: vivacità nei piccoli accenti (FAB, pill, spunte, header di sezione),
+  non in grandi blocchi colorati.
 - Articoli come **card arrotondate** (`Surface` shape 16dp + `shadowElevation`)
   su sfondo grigio chiaro, con spaziatura; niente più righe piatte con divider.
 - Checkbox **circolari**: `Icons.Outlined.RadioButtonUnchecked` →

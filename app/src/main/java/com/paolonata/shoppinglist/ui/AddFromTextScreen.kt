@@ -91,23 +91,21 @@ fun AddFromTextScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                    .background(brandGradient())
-                    .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+                    .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onCancel) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.add_cancel_button),
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
                 Text(
                     text = stringResource(R.string.add_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
             }
         },

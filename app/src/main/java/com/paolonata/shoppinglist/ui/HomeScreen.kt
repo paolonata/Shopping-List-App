@@ -64,7 +64,7 @@ fun HomeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            GradientHeader(
+            CleanHeader(
                 total = items.size,
                 checked = items.count { it.isChecked },
                 onClearChecked = onClearChecked,
@@ -103,7 +103,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun GradientHeader(
+private fun CleanHeader(
     total: Int,
     checked: Int,
     onClearChecked: () -> Unit,
@@ -113,21 +113,23 @@ private fun GradientHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-            .background(brandGradient())
-            .padding(start = 20.dp, end = 8.dp, top = 18.dp, bottom = 20.dp),
+            .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.home_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
             if (total > 0) {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.White)
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
@@ -142,21 +144,21 @@ private fun GradientHeader(
             }
         }
         if (total > 0) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = stringResource(R.string.home_progress, checked, total),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.9f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress = { if (total == 0) 0f else checked / total.toFloat() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
+                    .height(6.dp)
                     .clip(CircleShape),
-                color = Color.White,
-                trackColor = Color.White.copy(alpha = 0.30f),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
         }
     }
