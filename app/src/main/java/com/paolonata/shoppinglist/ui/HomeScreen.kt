@@ -1,29 +1,36 @@
 package com.paolonata.shoppinglist.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Checkbox
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,8 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.paolonata.shoppinglist.R
@@ -49,16 +58,29 @@ fun HomeScreen(
     onClearAll: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    val checkedCount = items.count { it.isChecked }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.home_title)) },
-                    actions = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
+                title = {
+                    Text(
+                        text = stringResource(R.string.home_title),
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+                actions = {
+                    if (items.isNotEmpty()) {
                         IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = null)
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                         DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                             DropdownMenuItem(
@@ -70,67 +92,68 @@ fun HomeScreen(
                                 onClick = { menuExpanded = false; onClearAll() },
                             )
                         }
-                    },
-                )
-                if (items.isNotEmpty()) {
-                    LinearProgressIndicator(
-                        progress = { if (items.isEmpty()) 0f else checkedCount / items.size.toFloat() },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
+                    }
+                },
+            )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                text = { Text(stringResource(R.string.home_add_fab)) },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+            FloatingActionButton(
                 onClick = onAddFromText,
-            )
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CircleShape,
+            ) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_add_fab))
+            }
         },
     ) { padding ->
         if (items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding).padding(32.dp)) {
-                Column(modifier = Modifier.align(Alignment.Center)) {
-                    Text(
-                        text = stringResource(R.string.home_empty_title),
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    Text(
-                        text = stringResource(R.string.home_empty_body),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-            }
+            EmptyState(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
             val toBuy = items.filter { !it.isChecked }
             val inCart = items.filter { it.isChecked }
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 if (toBuy.isNotEmpty()) {
-                    item { SectionHeader(stringResource(R.string.home_section_to_buy)) }
-                    items(toBuy, key = { it.id }) { shoppingItem ->
-                        ShoppingItemRow(shoppingItem, onToggleChecked, onDeleteItem)
+                    item {
+                        SectionHeader(stringResource(R.string.home_section_to_buy), toBuy.size)
                     }
+                    itemsWithDividers(toBuy, onToggleChecked, onDeleteItem)
                 }
                 if (inCart.isNotEmpty()) {
-                    item { SectionHeader(stringResource(R.string.home_section_in_cart)) }
-                    items(inCart, key = { it.id }) { shoppingItem ->
-                        ShoppingItemRow(shoppingItem, onToggleChecked, onDeleteItem)
+                    item {
+                        SectionHeader(stringResource(R.string.home_section_in_cart), inCart.size)
                     }
+                    itemsWithDividers(inCart, onToggleChecked, onDeleteItem)
                 }
+                item { Spacer(modifier = Modifier.size(80.dp)) }
             }
         }
     }
 }
 
+private fun androidx.compose.foundation.lazy.LazyListScope.itemsWithDividers(
+    data: List<ShoppingItem>,
+    onToggleChecked: (ShoppingItem) -> Unit,
+    onDeleteItem: (ShoppingItem) -> Unit,
+) {
+    items(data, key = { it.id }) { shoppingItem ->
+        ShoppingItemRow(shoppingItem, onToggleChecked, onDeleteItem)
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 56.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
+}
+
 @Composable
-private fun SectionHeader(text: String) {
+private fun SectionHeader(text: String, count: Int) {
     Text(
-        text = text,
+        text = "$text · $count",
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 6.dp),
     )
 }
 
@@ -143,14 +166,24 @@ private fun ShoppingItemRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .clickable { onToggleChecked(item) }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = item.isChecked, onCheckedChange = { onToggleChecked(item) })
+        Icon(
+            imageVector = if (item.isChecked) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (item.isChecked) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outline
+            },
+            modifier = Modifier.size(24.dp),
+        )
+        Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            val label = if (item.quantity > 1) "${item.name}  ×${item.quantity}" else item.name
             Text(
-                text = label,
+                text = item.name,
                 style = MaterialTheme.typography.bodyLarge,
                 textDecoration = if (item.isChecked) TextDecoration.LineThrough else null,
                 color = if (item.isChecked) {
@@ -161,16 +194,60 @@ private fun ShoppingItemRow(
             )
             item.note?.let { note ->
                 Text(
-                    text = stringResource(R.string.add_quantity_note, note),
+                    text = note,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        IconButton(onClick = { onDeleteItem(item) }) {
+        if (item.quantity > 1) {
+            Text(
+                text = "×${item.quantity}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = stringResource(R.string.home_delete_item_cd),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable { onDeleteItem(item) }
+                .padding(4.dp)
+                .size(18.dp),
+        )
+    }
+}
+
+@Composable
+private fun EmptyState(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.padding(32.dp)) {
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Icon(
-                Icons.Default.Delete,
-                contentDescription = stringResource(R.string.home_delete_item_cd),
+                imageVector = Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.size(72.dp),
+            )
+            Spacer(modifier = Modifier.size(16.dp))
+            Text(
+                text = stringResource(R.string.home_empty_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = stringResource(R.string.home_empty_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
         }
     }
