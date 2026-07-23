@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">Lista Spesa da WhatsApp</string>
+
+    <string name="home_title">Lista della spesa</string>
+    <string name="home_empty_title">La lista è vuota</string>
+    <string name="home_empty_body">Tocca + e incolla il messaggio WhatsApp della spesa: lo trasformo in una lista che puoi spuntare al supermercato.</string>
+    <string name="home_add_fab">Aggiungi dal testo</string>
+    <string name="home_menu_clear_checked">Rimuovi articoli spuntati</string>
+    <string name="home_menu_clear_all">Svuota tutta la lista</string>
+    <string name="home_section_to_buy">Da comprare</string>
+    <string name="home_section_in_cart">Nel carrello</string>
+    <string name="home_delete_item_cd">Elimina articolo</string>
+
+    <string name="add_title">Incolla il messaggio WhatsApp</string>
+    <string name="add_hint">Es: Acqua bambini, pollo pannato/nuggets, iogurt Danone, 2 pere, 2 mele…</string>
+    <string name="add_paste_button">Incolla dagli appunti</string>
+    <string name="add_clear_button">Cancella testo</string>
+    <string name="add_preview_title">Anteprima (%1$d articoli)</string>
+    <string name="add_preview_empty">Scrivi o incolla del testo per vedere l\'anteprima della lista.</string>
+    <string name="add_confirm_button">Aggiungi %1$d articoli alla lista</string>
+    <string name="add_cancel_button">Annulla</string>
+    <string name="add_remove_preview_item_cd">Rimuovi dall\'anteprima</string>
+    <string name="add_quantity_note">Nota: %1$s</string>
+    <string name="add_items_added_toast">%1$d articoli aggiunti alla lista</string>
+</resources>
