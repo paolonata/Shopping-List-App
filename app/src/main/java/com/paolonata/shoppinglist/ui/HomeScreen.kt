@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -149,7 +148,7 @@ private fun BottomActions(onManual: () -> Unit, onFromWhatsApp: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OutlinedActionButton(
+        GradientActionButton(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.Add,
             label = stringResource(R.string.home_add_manual),
@@ -180,25 +179,6 @@ private fun GradientActionButton(
         contentAlignment = Alignment.Center,
     ) {
         ActionButtonContent(icon = icon, label = label, color = Color.White)
-    }
-}
-
-@Composable
-private fun OutlinedActionButton(
-    modifier: Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        ActionButtonContent(icon = icon, label = label, color = MaterialTheme.colorScheme.primary)
     }
 }
 
