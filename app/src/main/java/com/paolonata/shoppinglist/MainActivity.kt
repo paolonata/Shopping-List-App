@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
@@ -47,31 +48,34 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    when (val current = screen) {
-                        is Screen.Home -> HomeScreen(
-                            items = items,
-                            onAddFromText = { screen = Screen.AddFromText("") },
-                            onToggleChecked = viewModel::toggleChecked,
-                            onDeleteItem = viewModel::deleteItem,
-                            onClearChecked = viewModel::clearChecked,
-                            onClearAll = viewModel::clearAll,
-                        )
+                    Crossfade(targetState = screen, label = "screen") { current ->
+                        when (current) {
+                            is Screen.Home -> HomeScreen(
+                                items = items,
+                                onAddFromText = { screen = Screen.AddFromText("") },
+                                onAddItem = { viewModel.addItemsFromText(it) },
+                                onToggleChecked = viewModel::toggleChecked,
+                                onDeleteItem = viewModel::deleteItem,
+                                onClearChecked = viewModel::clearChecked,
+                                onClearAll = viewModel::clearAll,
+                            )
 
-                        is Screen.AddFromText -> AddFromTextScreen(
-                            initialText = current.initialText,
-                            onParse = viewModel::previewParse,
-                            onConfirm = { text ->
-                                viewModel.addItemsFromText(text) { count ->
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        getString(R.string.add_items_added_toast, count),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                                screen = Screen.Home
-                            },
-                            onCancel = { screen = Screen.Home },
-                        )
+                            is Screen.AddFromText -> AddFromTextScreen(
+                                initialText = current.initialText,
+                                onParse = viewModel::previewParse,
+                                onConfirm = { text ->
+                                    viewModel.addItemsFromText(text) { count ->
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            getString(R.string.add_items_added_toast, count),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                    screen = Screen.Home
+                                },
+                                onCancel = { screen = Screen.Home },
+                            )
+                        }
                     }
                 }
             }

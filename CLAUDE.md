@@ -36,6 +36,17 @@ Progetto Gradle multi-modulo (Kotlin, version catalog in `gradle/libs.versions.t
     `ui/theme/Theme.kt`.
   - `MainActivity` — gestisce anche l'intent `ACTION_SEND` (text/plain) con cui
     WhatsApp condivide il testo → apre direttamente la schermata di anteprima.
+    Transizione tra schermate con `Crossfade`.
+
+### Aggiunta manuale + limite WhatsApp
+- Oltre a incollare/dettare, si può **aggiungere un singolo articolo a mano**:
+  pulsante "Aggiungi articolo" (in evidenza nell'empty state + riga in cima alla
+  lista) → `QuickAddDialog` (campo singolo, riusa `addItemsFromText` così "2 mele"
+  dà quantità 2 e resta aperto per aggiunte rapide).
+- **Limite di WhatsApp (non dell'app)**: per i messaggi di *testo* WhatsApp offre
+  solo "Copia"/"Inoltra", NON "Condividi" (share sheet di sistema). Quindi il
+  flusso testo è: Copia in WhatsApp → apri app → Incolla. L'`ACTION_SEND` funziona
+  quando un'app espone davvero il testo allo share sheet.
 
 ### Input vocale (dettatura)
 `AddFromTextScreen` ha un pulsante **🎤 Detta** che usa il riconoscimento
@@ -71,6 +82,17 @@ piatta come "sciapa"):
   (primary @12% alpha). FAB rotondo a gradiente con ombra.
 - Storia: prima versione Todoist "pulita" (commit `c080283`) giudicata troppo
   timida → restyle vibrante con gradiente.
+- **Font Montserrat**: `.ttf` statici (Regular/Medium/SemiBold/Bold/ExtraBold)
+  scaricati da GitHub (`JulietaUla/Montserrat`) e **bundle** in `app/src/main/res/font/`
+  (nomi lowercase con underscore). Applicato a TUTTA la `Typography` in
+  `Theme.kt` (copia degli stili default con `fontFamily = Montserrat`). ~2.2 MB.
+- **Sfondo caldo** (l'utente ha bocciato il grigio Android): background carta
+  `#FBF7F4` (dark `#16130F`), superfici bianche/scure; grigi tenui caldi.
+- **Animazioni/dinamicità**: `Modifier.animateItem()` sulle card (si riposizionano
+  quando spunti un articolo e passa da "Da comprare" a "Nel carrello"); checkbox
+  con colore animato (`animateColorAsState`) e piccolo "pop" (`animateFloatAsState`
+  + spring bouncy su `graphicsLayer` scale); testo che sfuma di colore; barra di
+  avanzamento animata; FAB con entrata in scala; `Crossfade` tra schermate.
 
 ### Icona
 - Generata via script Python con **supersampling** (nessun tool grafico

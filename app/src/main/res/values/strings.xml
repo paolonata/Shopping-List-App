@@ -3,8 +3,13 @@
 
     <string name="home_title">Lista della spesa</string>
     <string name="home_empty_title">La lista è vuota</string>
-    <string name="home_empty_body">Tocca + e incolla il messaggio WhatsApp della spesa: lo trasformo in una lista che puoi spuntare al supermercato.</string>
+    <string name="home_empty_body">Aggiungi gli articoli a mano, oppure copia un messaggio da WhatsApp e incollalo con il tasto +.</string>
     <string name="home_add_fab">Aggiungi dal testo</string>
+    <string name="home_add_item">Aggiungi articolo</string>
+    <string name="quick_add_title">Nuovo articolo</string>
+    <string name="quick_add_hint">Es. Latte, 2 mele…</string>
+    <string name="quick_add_confirm">Aggiungi</string>
+    <string name="quick_add_done">Fine</string>
     <string name="home_menu_clear_checked">Rimuovi articoli spuntati</string>
     <string name="home_menu_clear_all">Svuota tutta la lista</string>
     <string name="home_section_to_buy">Da comprare</string>

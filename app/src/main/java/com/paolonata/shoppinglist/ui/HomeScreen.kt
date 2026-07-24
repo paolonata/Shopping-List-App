@@ -1,6 +1,12 @@
 package com.paolonata.shoppinglist.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,21 +24,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,10 +53,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -56,11 +70,14 @@ import com.paolonata.shoppinglist.ui.theme.brandGradient
 fun HomeScreen(
     items: List<ShoppingItem>,
     onAddFromText: () -> Unit,
+    onAddItem: (String) -> Unit,
     onToggleChecked: (ShoppingItem) -> Unit,
     onDeleteItem: (ShoppingItem) -> Unit,
     onClearChecked: () -> Unit,
     onClearAll: () -> Unit,
 ) {
+    var showQuickAdd by remember { mutableStateOf(false) }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -76,29 +93,50 @@ fun HomeScreen(
         },
     ) { padding ->
         if (items.isEmpty()) {
-            EmptyState(modifier = Modifier.fillMaxSize().padding(padding))
+            EmptyState(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                onAddItem = { showQuickAdd = true },
+            )
         } else {
             val toBuy = items.filter { !it.isChecked }
             val inCart = items.filter { it.isChecked }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                item { QuickAddRow(onClick = { showQuickAdd = true }) }
                 if (toBuy.isNotEmpty()) {
                     item { SectionHeader(stringResource(R.string.home_section_to_buy), toBuy.size) }
                     items(toBuy, key = { it.id }) { shoppingItem ->
-                        ItemCard(shoppingItem, onToggleChecked, onDeleteItem)
+                        ItemCard(
+                            item = shoppingItem,
+                            onToggleChecked = onToggleChecked,
+                            onDeleteItem = onDeleteItem,
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
                 if (inCart.isNotEmpty()) {
                     item { SectionHeader(stringResource(R.string.home_section_in_cart), inCart.size) }
                     items(inCart, key = { it.id }) { shoppingItem ->
-                        ItemCard(shoppingItem, onToggleChecked, onDeleteItem)
+                        ItemCard(
+                            item = shoppingItem,
+                            onToggleChecked = onToggleChecked,
+                            onDeleteItem = onDeleteItem,
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
             }
         }
+    }
+
+    if (showQuickAdd) {
+        QuickAddDialog(
+            onAdd = onAddItem,
+            onDismiss = { showQuickAdd = false },
+        )
     }
 }
 
@@ -151,8 +189,14 @@ private fun CleanHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(8.dp))
+            val fraction = if (total == 0) 0f else checked / total.toFloat()
+            val animatedFraction by animateFloatAsState(
+                targetValue = fraction,
+                animationSpec = tween(500),
+                label = "progress",
+            )
             LinearProgressIndicator(
-                progress = { if (total == 0) 0f else checked / total.toFloat() },
+                progress = { animatedFraction },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
@@ -165,11 +209,45 @@ private fun CleanHeader(
 }
 
 @Composable
+private fun QuickAddRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = stringResource(R.string.home_add_item),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun GradientFab(onClick: () -> Unit) {
+    var appeared by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (appeared) 1f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "fabScale",
+    )
+    androidx.compose.runtime.LaunchedEffect(Unit) { appeared = true }
     Box(
         modifier = Modifier
             .size(60.dp)
-            .shadow(10.dp, CircleShape)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CircleShape)
             .background(brandGradient())
             .clickable(onClick = onClick),
@@ -200,12 +278,13 @@ private fun ItemCard(
     item: ShoppingItem,
     onToggleChecked: (ShoppingItem) -> Unit,
     onDeleteItem: (ShoppingItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
@@ -213,24 +292,45 @@ private fun ItemCard(
                 .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val checkColor by animateColorAsState(
+                targetValue = if (item.isChecked) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outline
+                },
+                animationSpec = tween(200),
+                label = "checkColor",
+            )
+            val checkScale by animateFloatAsState(
+                targetValue = if (item.isChecked) 1.12f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "checkScale",
+            )
             Icon(
                 imageVector = if (item.isChecked) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
                 contentDescription = null,
-                tint = if (item.isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(26.dp),
+                tint = checkColor,
+                modifier = Modifier
+                    .size(26.dp)
+                    .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
             )
             Spacer(modifier = Modifier.width(14.dp))
+            val textColor by animateColorAsState(
+                targetValue = if (item.isChecked) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                animationSpec = tween(200),
+                label = "textColor",
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     textDecoration = if (item.isChecked) TextDecoration.LineThrough else null,
-                    color = if (item.isChecked) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
+                    color = textColor,
                 )
                 item.note?.let { note ->
                     Text(
@@ -276,7 +376,7 @@ private fun QuantityPill(quantity: Int) {
 }
 
 @Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
+private fun EmptyState(modifier: Modifier = Modifier, onAddItem: () -> Unit) {
     Box(modifier = modifier.padding(32.dp)) {
         Column(
             modifier = Modifier.align(Alignment.Center),
@@ -311,6 +411,90 @@ private fun EmptyState(modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            Spacer(modifier = Modifier.height(24.dp))
+            GradientButton(
+                text = stringResource(R.string.home_add_item),
+                onClick = onAddItem,
+            )
         }
     }
+}
+
+@Composable
+private fun GradientButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(brandGradient())
+            .clickable(onClick = onClick)
+            .padding(horizontal = 28.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickAddDialog(onAdd: (String) -> Unit, onDismiss: () -> Unit) {
+    var value by remember { mutableStateOf("") }
+    fun submit() {
+        val trimmed = value.trim()
+        if (trimmed.isNotEmpty()) {
+            onAdd(trimmed)
+            value = ""
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.quick_add_title)) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.quick_add_hint)) },
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                ),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { submit() }) {
+                Text(
+                    text = stringResource(R.string.quick_add_confirm),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = stringResource(R.string.quick_add_done),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+    )
 }
