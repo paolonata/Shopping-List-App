@@ -86,10 +86,12 @@ piatta come "sciapa"):
   (primary @12% alpha). FAB rotondo a gradiente con ombra.
 - Storia: prima versione Todoist "pulita" (commit `c080283`) giudicata troppo
   timida → restyle vibrante con gradiente.
-- **Font Montserrat**: `.ttf` statici (Regular/Medium/SemiBold/Bold/ExtraBold)
-  scaricati da GitHub (`JulietaUla/Montserrat`) e **bundle** in `app/src/main/res/font/`
-  (nomi lowercase con underscore). Applicato a TUTTA la `Typography` in
-  `Theme.kt` (copia degli stili default con `fontFamily = Montserrat`). ~2.2 MB.
+- **Font Open Sans**: `.ttf` statici (Regular/SemiBold/Bold/ExtraBold) scaricati
+  da GitHub (`googlefonts/opensans`, cartella `fonts/ttf`) e **bundle** in
+  `app/src/main/res/font/` (nomi lowercase con underscore). Applicato a TUTTA la
+  `Typography` in `Theme.kt`. NB: Open Sans **non ha uno static "Medium"** → nel
+  `FontFamily` il peso Medium è mappato sul Regular (esplicito). Prima era
+  Montserrat (rimosso su richiesta utente).
 - **Sfondo caldo** (l'utente ha bocciato il grigio Android): background carta
   `#FBF7F4` (dark `#16130F`), superfici bianche/scure; grigi tenui caldi.
 - **Animazioni/dinamicità**: `Modifier.animateItem()` sulle card (si riposizionano

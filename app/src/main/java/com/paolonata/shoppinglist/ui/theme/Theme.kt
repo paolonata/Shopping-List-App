@@ -20,34 +20,35 @@ val BrandGradientEnd = Color(0xFFF5325B)
 
 fun brandGradient(): Brush = Brush.horizontalGradient(listOf(BrandGradientStart, BrandGradientEnd))
 
-// Font Montserrat (bundle in res/font).
-private val Montserrat = FontFamily(
-    Font(R.font.montserrat_regular, FontWeight.Normal),
-    Font(R.font.montserrat_medium, FontWeight.Medium),
-    Font(R.font.montserrat_semibold, FontWeight.SemiBold),
-    Font(R.font.montserrat_bold, FontWeight.Bold),
-    Font(R.font.montserrat_extrabold, FontWeight.ExtraBold),
+// Font Open Sans (bundle in res/font). Open Sans non ha uno static "Medium":
+// la richiesta di peso Medium usa il Regular (mappatura esplicita, deterministica).
+private val OpenSans = FontFamily(
+    Font(R.font.opensans_regular, FontWeight.Normal),
+    Font(R.font.opensans_regular, FontWeight.Medium),
+    Font(R.font.opensans_semibold, FontWeight.SemiBold),
+    Font(R.font.opensans_bold, FontWeight.Bold),
+    Font(R.font.opensans_extrabold, FontWeight.ExtraBold),
 )
 
 private val AppTypography: Typography
     get() {
         val d = Typography()
         return Typography(
-            displayLarge = d.displayLarge.copy(fontFamily = Montserrat),
-            displayMedium = d.displayMedium.copy(fontFamily = Montserrat),
-            displaySmall = d.displaySmall.copy(fontFamily = Montserrat),
-            headlineLarge = d.headlineLarge.copy(fontFamily = Montserrat),
-            headlineMedium = d.headlineMedium.copy(fontFamily = Montserrat),
-            headlineSmall = d.headlineSmall.copy(fontFamily = Montserrat),
-            titleLarge = d.titleLarge.copy(fontFamily = Montserrat),
-            titleMedium = d.titleMedium.copy(fontFamily = Montserrat),
-            titleSmall = d.titleSmall.copy(fontFamily = Montserrat),
-            bodyLarge = d.bodyLarge.copy(fontFamily = Montserrat),
-            bodyMedium = d.bodyMedium.copy(fontFamily = Montserrat),
-            bodySmall = d.bodySmall.copy(fontFamily = Montserrat),
-            labelLarge = d.labelLarge.copy(fontFamily = Montserrat),
-            labelMedium = d.labelMedium.copy(fontFamily = Montserrat),
-            labelSmall = d.labelSmall.copy(fontFamily = Montserrat),
+            displayLarge = d.displayLarge.copy(fontFamily = OpenSans),
+            displayMedium = d.displayMedium.copy(fontFamily = OpenSans),
+            displaySmall = d.displaySmall.copy(fontFamily = OpenSans),
+            headlineLarge = d.headlineLarge.copy(fontFamily = OpenSans),
+            headlineMedium = d.headlineMedium.copy(fontFamily = OpenSans),
+            headlineSmall = d.headlineSmall.copy(fontFamily = OpenSans),
+            titleLarge = d.titleLarge.copy(fontFamily = OpenSans),
+            titleMedium = d.titleMedium.copy(fontFamily = OpenSans),
+            titleSmall = d.titleSmall.copy(fontFamily = OpenSans),
+            bodyLarge = d.bodyLarge.copy(fontFamily = OpenSans),
+            bodyMedium = d.bodyMedium.copy(fontFamily = OpenSans),
+            bodySmall = d.bodySmall.copy(fontFamily = OpenSans),
+            labelLarge = d.labelLarge.copy(fontFamily = OpenSans),
+            labelMedium = d.labelMedium.copy(fontFamily = OpenSans),
+            labelSmall = d.labelSmall.copy(fontFamily = OpenSans),
         )
     }
 
