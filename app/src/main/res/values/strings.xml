@@ -6,6 +6,8 @@
     <string name="home_empty_body">Aggiungi gli articoli a mano, oppure copia un messaggio da WhatsApp e incollalo con il tasto +.</string>
     <string name="home_add_fab">Aggiungi dal testo</string>
     <string name="home_add_item">Aggiungi articolo</string>
+    <string name="home_add_manual">Aggiungi manualmente</string>
+    <string name="home_add_whatsapp">Aggiungi da WhatsApp</string>
     <string name="quick_add_title">Nuovo articolo</string>
     <string name="quick_add_hint">Es. Latte, 2 mele…</string>
     <string name="quick_add_confirm">Aggiungi</string>

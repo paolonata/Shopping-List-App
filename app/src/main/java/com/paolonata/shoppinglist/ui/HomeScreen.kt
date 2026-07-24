@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.data.ShoppingItem
 import com.paolonata.shoppinglist.ui.theme.brandGradient
@@ -88,24 +90,23 @@ fun HomeScreen(
                 onClearAll = onClearAll,
             )
         },
-        floatingActionButton = {
-            GradientFab(onClick = onAddFromText)
+        bottomBar = {
+            BottomActions(
+                onManual = { showQuickAdd = true },
+                onFromWhatsApp = onAddFromText,
+            )
         },
     ) { padding ->
         if (items.isEmpty()) {
-            EmptyState(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                onAddItem = { showQuickAdd = true },
-            )
+            EmptyState(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
             val toBuy = items.filter { !it.isChecked }
             val inCart = items.filter { it.isChecked }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                item { QuickAddRow(onClick = { showQuickAdd = true }) }
                 if (toBuy.isNotEmpty()) {
                     item { SectionHeader(stringResource(R.string.home_section_to_buy), toBuy.size) }
                     items(toBuy, key = { it.id }) { shoppingItem ->
@@ -136,6 +137,91 @@ fun HomeScreen(
         QuickAddDialog(
             onAdd = onAddItem,
             onDismiss = { showQuickAdd = false },
+        )
+    }
+}
+
+@Composable
+private fun BottomActions(onManual: () -> Unit, onFromWhatsApp: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        OutlinedActionButton(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Default.Add,
+            label = stringResource(R.string.home_add_manual),
+            onClick = onManual,
+        )
+        GradientActionButton(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Default.ContentPaste,
+            label = stringResource(R.string.home_add_whatsapp),
+            onClick = onFromWhatsApp,
+        )
+    }
+}
+
+@Composable
+private fun GradientActionButton(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(brandGradient())
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        ActionButtonContent(icon = icon, label = label, color = Color.White)
+    }
+}
+
+@Composable
+private fun OutlinedActionButton(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        ActionButtonContent(icon = icon, label = label, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun ActionButtonContent(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    color: Color,
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            lineHeight = 16.sp,
         )
     }
 }
@@ -205,60 +291,6 @@ private fun CleanHeader(
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun QuickAddRow(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(22.dp),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = stringResource(R.string.home_add_item),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun GradientFab(onClick: () -> Unit) {
-    var appeared by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (appeared) 1f else 0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "fabScale",
-    )
-    androidx.compose.runtime.LaunchedEffect(Unit) { appeared = true }
-    Box(
-        modifier = Modifier
-            .size(60.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(CircleShape)
-            .background(brandGradient())
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = stringResource(R.string.home_add_fab),
-            tint = Color.White,
-            modifier = Modifier.size(28.dp),
-        )
     }
 }
 
@@ -376,7 +408,7 @@ private fun QuantityPill(quantity: Int) {
 }
 
 @Composable
-private fun EmptyState(modifier: Modifier = Modifier, onAddItem: () -> Unit) {
+private fun EmptyState(modifier: Modifier = Modifier) {
     Box(modifier = modifier.padding(32.dp)) {
         Column(
             modifier = Modifier.align(Alignment.Center),
@@ -410,39 +442,6 @@ private fun EmptyState(modifier: Modifier = Modifier, onAddItem: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            GradientButton(
-                text = stringResource(R.string.home_add_item),
-                onClick = onAddItem,
-            )
-        }
-    }
-}
-
-@Composable
-private fun GradientButton(text: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(brandGradient())
-            .clickable(onClick = onClick)
-            .padding(horizontal = 28.dp, vertical = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
             )
         }
     }

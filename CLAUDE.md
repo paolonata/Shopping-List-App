@@ -40,9 +40,13 @@ Progetto Gradle multi-modulo (Kotlin, version catalog in `gradle/libs.versions.t
 
 ### Aggiunta manuale + limite WhatsApp
 - Oltre a incollare/dettare, si può **aggiungere un singolo articolo a mano**:
-  pulsante "Aggiungi articolo" (in evidenza nell'empty state + riga in cima alla
-  lista) → `QuickAddDialog` (campo singolo, riusa `addItemsFromText` così "2 mele"
-  dà quantità 2 e resta aperto per aggiunte rapide).
+  `QuickAddDialog` (campo singolo, riusa `addItemsFromText` così "2 mele" dà
+  quantità 2 e resta aperto per aggiunte rapide).
+- **Azioni in basso** (`Scaffold.bottomBar`, `BottomActions`): due bottoni
+  rettangolari affiancati (stessa larghezza), sempre visibili: **"A mano"**
+  (outlined, apre il QuickAddDialog) e **"Da WhatsApp"** (gradiente, apre
+  `AddFromTextScreen`). Sostituiscono il vecchio FAB tondo + bottone singolo
+  (l'utente li voleva affiancati ed espliciti su cosa fa ciascuno).
 - **Limite di WhatsApp (non dell'app)**: per i messaggi di *testo* WhatsApp offre
   solo "Copia"/"Inoltra", NON "Condividi" (share sheet di sistema). Quindi il
   flusso testo è: Copia in WhatsApp → apri app → Incolla. L'`ACTION_SEND` funziona
