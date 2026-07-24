@@ -142,7 +142,23 @@ Problemi incontrati e soluzioni, **in ordine** (utile per non ripeterli):
      Poi ripristinato a `2024.10.00` (pinned = riproducibile). Lezione: leggere
      bene il messaggio del compilatore prima di "indovinare" versioni.
 
-Prima build verde: commit `bb9f869`. Restyle Todoist verde: commit `c080283`.
+4. **`Unresolved reference 'RESULTS_RECOGNITION'`** (feature dettatura vocale).
+   - Causa: `RESULTS_RECOGNITION` è una costante di `SpeechRecognizer` (bundle del
+     `RecognitionListener`), NON di `RecognizerIntent`. Per leggere il risultato
+     dell'Activity `ACTION_RECOGNIZE_SPEECH` la chiave giusta è
+     `RecognizerIntent.EXTRA_RESULTS`. → **Fix**: usare `EXTRA_RESULTS`.
+
+### Cronologia milestone (commit verdi)
+- `bb9f869` — prima build verde (app base funzionante).
+- `c080283` — restyle "Todoist pulito" (poi giudicato troppo timido/"sciapo").
+- `d7cd568` — dettatura vocale + restyle vibrante (gradiente, card, FAB).
+- `1a5b77e` — header piatto: rimossa la "pillola" a gradiente in alto, troppo
+  accesa in dark; gradiente tenuto solo su FAB/empty state/pulsante conferma.
+
+Andamento del design (utile per capire i gusti dell'utente): piatto bianco/rosso
+= "sciapo" → Todoist pulito = ancora timido → gradiente ovunque/header hero =
+"orrenda pillola colorata" → **equilibrio**: sfondo/testo puliti + accenti
+vivaci piccoli (FAB, spunte, pill quantità, barra avanzamento, header sezione).
 
 ### Versioni chiave (in `gradle/libs.versions.toml`)
 - AGP 8.6.1, Kotlin 2.0.21, KSP 2.0.21-1.0.28, compose-bom 2024.10.00,
@@ -163,6 +179,12 @@ Prima build verde: commit `bb9f869`. Restyle Todoist verde: commit `c080283`.
 
 ### Attenzione operative
 - Non creare Pull Request se l'utente non la chiede.
-- L'output di `list_workflow_runs` è enorme: filtrare/parsare (es. jq/python) o
-  usare `per_page=1`.
+- L'output di `list_workflow_runs` è **enorme** e supera il limite di token: viene
+  salvato su file dal tool. Le righe sono troppo lunghe per `Read` con
+  offset/limit → parsarlo con **python/json** (`json.load(open(path))`,
+  `o['workflow_runs'][0]` → `head_sha`, `status`, `conclusion`, `id`, `html_url`).
+  Usare sempre `per_page=1`.
+- Per il polling ripetuto della CI (quando l'utente dice "controlla ogni tot"):
+  usare `ScheduleWakeup`; il minimo è **~60s** (non si scende a 30s). Ricordarsi
+  di fermare il loop (`stop:true`) a build verde.
 - Firma i commit come da istruzioni di sessione (Co-Authored-By + Claude-Session).
