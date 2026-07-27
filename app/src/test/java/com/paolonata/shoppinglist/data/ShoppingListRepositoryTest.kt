@@ -67,6 +67,26 @@ class ShoppingListRepositoryTest {
     }
 
     @Test
+    fun `manual items are preserved when later importing from whatsapp`() = runBlocking {
+        val dao = FakeShoppingItemDao()
+        val repository = ShoppingListRepository(dao)
+
+        // Aggiunta manuale
+        repository.addParsedItems(listOf(ParsedItem(name = "Latte"), ParsedItem(name = "Pane")))
+        // Importazione da WhatsApp (più articoli, uno in comune)
+        repository.addParsedItems(
+            listOf(ParsedItem(name = "Pane"), ParsedItem(name = "Mele", quantity = 2), ParsedItem(name = "Uova")),
+        )
+        // Seconda importazione da WhatsApp
+        repository.addParsedItems(listOf(ParsedItem(name = "Acqua")))
+
+        val names = dao.getUnchecked().map { it.name }.toSet()
+        assertEquals(setOf("Latte", "Pane", "Mele", "Uova", "Acqua"), names)
+        // "Pane" unito (non duplicato), niente è stato cancellato
+        assertEquals(1, dao.getUnchecked().count { it.name == "Pane" })
+    }
+
+    @Test
     fun `clearing checked items only removes checked rows`() = runBlocking {
         val dao = FakeShoppingItemDao()
         val repository = ShoppingListRepository(dao)

@@ -9,9 +9,11 @@
     <string name="home_add_manual">Aggiungi\nmanualmente</string>
     <string name="home_add_whatsapp">Aggiungi\nda WhatsApp</string>
     <string name="quick_add_title">Nuovo articolo</string>
-    <string name="quick_add_hint">Es. Latte, 2 mele…</string>
+    <string name="quick_add_hint">Scrivi un articolo…</string>
     <string name="quick_add_confirm">Aggiungi</string>
     <string name="quick_add_done">Fine</string>
+    <string name="share_title">Lista della spesa:</string>
+    <string name="share_chooser">Condividi la lista</string>
     <string name="home_menu_clear_checked">Rimuovi articoli spuntati</string>
     <string name="home_menu_clear_all">Svuota tutta la lista</string>
     <string name="home_section_to_buy">Da comprare</string>

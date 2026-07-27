@@ -1,5 +1,7 @@
 package com.paolonata.shoppinglist.ui
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -21,31 +23,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,8 +56,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -77,7 +84,16 @@ fun HomeScreen(
     onClearChecked: () -> Unit,
     onClearAll: () -> Unit,
 ) {
-    var showQuickAdd by remember { mutableStateOf(false) }
+    var inlineAdding by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val context = LocalContext.current
+
+    // Mantiene visibile la riga di aggiunta inline mentre si aggiungono articoli.
+    LaunchedEffect(inlineAdding, items.size) {
+        if (inlineAdding) {
+            runCatching { listState.animateScrollToItem(items.size + 3) }
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -85,23 +101,25 @@ fun HomeScreen(
             CleanHeader(
                 total = items.size,
                 checked = items.count { it.isChecked },
+                onShare = { shareList(context, items) },
                 onClearChecked = onClearChecked,
                 onClearAll = onClearAll,
             )
         },
         bottomBar = {
             BottomActions(
-                onManual = { showQuickAdd = true },
+                onManual = { inlineAdding = true },
                 onFromWhatsApp = onAddFromText,
             )
         },
     ) { padding ->
-        if (items.isEmpty()) {
+        if (items.isEmpty() && !inlineAdding) {
             EmptyState(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
             val toBuy = items.filter { !it.isChecked }
             val inCart = items.filter { it.isChecked }
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -128,16 +146,31 @@ fun HomeScreen(
                         )
                     }
                 }
+                if (inlineAdding) {
+                    item {
+                        InlineAddRow(
+                            onAdd = onAddItem,
+                            onClose = { inlineAdding = false },
+                        )
+                    }
+                }
             }
         }
     }
+}
 
-    if (showQuickAdd) {
-        QuickAddDialog(
-            onAdd = onAddItem,
-            onDismiss = { showQuickAdd = false },
-        )
+private fun shareList(context: Context, items: List<ShoppingItem>) {
+    if (items.isEmpty()) return
+    val sb = StringBuilder(context.getString(R.string.share_title))
+    for (item in items) {
+        sb.append("\n• ").append(item.name)
+        if (item.quantity > 1) sb.append(" ×").append(item.quantity)
     }
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, sb.toString())
+    }
+    context.startActivity(Intent.createChooser(send, context.getString(R.string.share_chooser)))
 }
 
 @Composable
@@ -210,6 +243,7 @@ private fun ActionButtonContent(
 private fun CleanHeader(
     total: Int,
     checked: Int,
+    onShare: () -> Unit,
     onClearChecked: () -> Unit,
     onClearAll: () -> Unit,
 ) {
@@ -228,6 +262,13 @@ private fun CleanHeader(
                 modifier = Modifier.weight(1f),
             )
             if (total > 0) {
+                IconButton(onClick = onShare) {
+                    Icon(
+                        Icons.Default.Share,
+                        contentDescription = stringResource(R.string.share_chooser),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(
                         Icons.Default.MoreVert,
@@ -371,6 +412,79 @@ private fun ItemCard(
 }
 
 @Composable
+private fun InlineAddRow(onAdd: (String) -> Unit, onClose: () -> Unit) {
+    var value by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+
+    fun submit() {
+        val trimmed = value.trim()
+        if (trimmed.isNotEmpty()) {
+            onAdd(trimmed)
+            value = ""
+        } else {
+            onClose()
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(26.dp),
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            BasicTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.quick_add_hint),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+            )
+            IconButton(onClick = { submit() }) {
+                Icon(
+                    imageVector = if (value.isBlank()) Icons.Default.Close else Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun QuantityPill(quantity: Int) {
     Box(
         modifier = Modifier
@@ -425,55 +539,4 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             )
         }
     }
-}
-
-@Composable
-private fun QuickAddDialog(onAdd: (String) -> Unit, onDismiss: () -> Unit) {
-    var value by remember { mutableStateOf("") }
-    fun submit() {
-        val trimmed = value.trim()
-        if (trimmed.isNotEmpty()) {
-            onAdd(trimmed)
-            value = ""
-        }
-    }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.quick_add_title)) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.quick_add_hint)) },
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(onDone = { submit() }),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                ),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { submit() }) {
-                Text(
-                    text = stringResource(R.string.quick_add_confirm),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = stringResource(R.string.quick_add_done),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-    )
 }
