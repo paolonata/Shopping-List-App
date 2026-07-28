@@ -4,14 +4,9 @@
     <string name="home_title">Lista della spesa</string>
     <string name="home_empty_title">La lista è vuota</string>
     <string name="home_empty_body">Aggiungi gli articoli a mano, oppure copia un messaggio da WhatsApp e incollalo con il tasto +.</string>
-    <string name="home_add_fab">Aggiungi dal testo</string>
-    <string name="home_add_item">Aggiungi articolo</string>
     <string name="home_add_manual">Aggiungi\nmanualmente</string>
     <string name="home_add_whatsapp">Aggiungi\nda WhatsApp</string>
-    <string name="quick_add_title">Nuovo articolo</string>
     <string name="quick_add_hint">Scrivi un articolo…</string>
-    <string name="quick_add_confirm">Aggiungi</string>
-    <string name="quick_add_done">Fine</string>
     <string name="share_title">Lista della spesa:</string>
     <string name="share_chooser">Condividi la lista</string>
     <string name="home_menu_clear_checked">Rimuovi articoli spuntati</string>
@@ -36,4 +31,18 @@
     <string name="add_remove_preview_item_cd">Rimuovi dall\'anteprima</string>
     <string name="add_quantity_note">Nota: %1$s</string>
     <string name="add_items_added_toast">%1$d articoli aggiunti alla lista</string>
+
+    <string name="quantity_decrease_cd">Diminuisci quantità</string>
+    <string name="quantity_increase_cd">Aumenta quantità</string>
+    <string name="edit_item_cd">Modifica articolo</string>
+    <string name="edit_confirm_cd">Salva</string>
+    <string name="edit_cancel_cd">Annulla</string>
+    <string name="reorder_handle_cd">Trascina per riordinare</string>
+
+    <string name="notification_menu_toggle">Promemoria in notifica</string>
+    <string name="notification_permission_denied">Per il promemoria serve il permesso di mostrare notifiche</string>
+    <string name="notification_channel_name">Promemoria lista spesa</string>
+    <string name="notification_channel_description">Notifica persistente con gli articoli ancora da comprare, spuntabili senza aprire l\'app</string>
+    <string name="notification_progress">%1$d di %2$d nel carrello</string>
+    <string name="notification_more_items">+%1$d altri articoli (apri l\'app per vederli)</string>
 </resources>

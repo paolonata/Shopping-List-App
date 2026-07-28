@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -13,8 +14,14 @@ interface ShoppingItemDao {
     @Query("SELECT * FROM shopping_items ORDER BY isChecked ASC, position ASC")
     fun observeAll(): Flow<List<ShoppingItem>>
 
+    @Query("SELECT * FROM shopping_items ORDER BY isChecked ASC, position ASC")
+    suspend fun getAllOnce(): List<ShoppingItem>
+
     @Query("SELECT * FROM shopping_items WHERE isChecked = 0")
     suspend fun getUnchecked(): List<ShoppingItem>
+
+    @Query("SELECT * FROM shopping_items WHERE id = :id")
+    suspend fun getById(id: Long): ShoppingItem?
 
     @Insert
     suspend fun insertAll(items: List<ShoppingItem>)
@@ -33,4 +40,10 @@ interface ShoppingItemDao {
 
     @Query("SELECT COALESCE(MAX(position), 0) FROM shopping_items")
     suspend fun getMaxPosition(): Long
+
+    /** Aggiorna in blocco (una transazione) le posizioni degli articoli riordinati. */
+    @Transaction
+    suspend fun updateAll(items: List<ShoppingItem>) {
+        items.forEach { update(it) }
+    }
 }

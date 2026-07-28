@@ -29,8 +29,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,21 +56,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.parser.ParsedItem
 import com.paolonata.shoppinglist.ui.theme.brandGradient
 
+private fun previewKey(item: ParsedItem): String = "${item.name.trim().lowercase()}|${item.note.orEmpty()}"
+
 @Composable
 fun AddFromTextScreen(
     initialText: String,
     onParse: (String) -> List<ParsedItem>,
-    onConfirm: (String) -> Unit,
+    onConfirm: (List<ParsedItem>) -> Unit,
     onCancel: () -> Unit,
 ) {
     var text by remember { mutableStateOf(initialText) }
     val context = LocalContext.current
-    val preview = remember(text) { onParse(text) }
+    val parsed = remember(text) { onParse(text) }
+    // Quantità modificate a mano nell'anteprima, che sopravvivono a un ricalcolo del testo
+    // (le voci non più presenti restano semplicemente inutilizzate).
+    val quantityOverrides = remember { mutableStateMapOf<String, Int>() }
+    val preview = parsed.map { item ->
+        quantityOverrides[previewKey(item)]?.let { item.copy(quantity = it) } ?: item
+    }
 
     val dictatePrompt = stringResource(R.string.add_dictate_prompt)
     val speechUnavailable = stringResource(R.string.add_speech_unavailable)
@@ -145,7 +157,7 @@ fun AddFromTextScreen(
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 if (text.isNotEmpty()) {
-                    TextButton(onClick = { text = "" }) {
+                    TextButton(onClick = { text = ""; quantityOverrides.clear() }) {
                         Text(
                             text = stringResource(R.string.add_clear_button),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -180,7 +192,14 @@ fun AddFromTextScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(preview) { parsedItem -> PreviewCard(parsedItem) }
+                    items(preview, key = { previewKey(it) }) { parsedItem ->
+                        PreviewCard(
+                            item = parsedItem,
+                            onQuantityChange = { newQuantity ->
+                                quantityOverrides[previewKey(parsedItem)] = newQuantity
+                            },
+                        )
+                    }
                 }
             }
 
@@ -189,14 +208,14 @@ fun AddFromTextScreen(
             ConfirmButton(
                 enabled = preview.isNotEmpty(),
                 label = stringResource(R.string.add_confirm_button, preview.size),
-                onClick = { onConfirm(text) },
+                onClick = { onConfirm(preview) },
             )
         }
     }
 }
 
 @Composable
-private fun PreviewCard(item: ParsedItem) {
+private fun PreviewCard(item: ParsedItem, onQuantityChange: (Int) -> Unit) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -204,7 +223,7 @@ private fun PreviewCard(item: ParsedItem) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -228,20 +247,34 @@ private fun PreviewCard(item: ParsedItem) {
                     )
                 }
             }
-            if (item.quantity > 1) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                        .padding(horizontal = 10.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        text = "×${item.quantity}",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
+            IconButton(
+                onClick = { if (item.quantity > 1) onQuantityChange(item.quantity - 1) },
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = stringResource(R.string.quantity_decrease_cd),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Text(
+                text = item.quantity.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(20.dp),
+                textAlign = TextAlign.Center,
+            )
+            IconButton(
+                onClick = { onQuantityChange(item.quantity + 1) },
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.quantity_increase_cd),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
             }
         }
     }

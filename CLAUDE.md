@@ -62,6 +62,33 @@ Progetto Gradle multi-modulo (Kotlin, version catalog in `gradle/libs.versions.t
   flusso testo è: Copia in WhatsApp → apri app → Incolla. L'`ACTION_SEND` funziona
   quando un'app espone davvero il testo allo share sheet.
 
+### Quantità, modifica ed editing degli articoli
+- **Quantità in aggiunta**: sia `InlineAddRow` (aggiunta manuale) sia le card di
+  anteprima in `AddFromTextScreen` (import WhatsApp) hanno uno **stepper -/+**
+  (`QuantityStepper`, duplicato nei due file per semplicità). Default **1**,
+  modificabile prima di confermare.
+  - Nell'anteprima WhatsApp le modifiche di quantità sono tenute in una mappa
+    `quantityOverrides` (chiave `nome|nota`) che sopravvive al ricalcolo del
+    parser mentre l'utente scrive; `onConfirm` ora riceve la **lista già
+    interpretata** (`List<ParsedItem>`, non più il testo grezzo) così le
+    modifiche manuali non vengono perse ri-parsando da zero
+    (`ShoppingListViewModel.addParsedItems`).
+- **Modifica di un articolo già in lista**: tap sul **testo** della card (non
+  sulla spunta, non sulla `x`) entra in modalità modifica inline
+  (`EditItemRow`): campo nome + stepper quantità + ✓/✗. Funziona sia in "Da
+  comprare" sia in "Nel carrello". `Repository.updateItemDetails` (ignora nomi
+  vuoti) + `ViewModel.updateItem`.
+- **Riordino con drag & drop**: solo nella sezione "Da comprare" (i comprati non
+  si riordinano). Icona "maniglia" (`Icons.Default.DragHandle`) a fianco di ogni
+  articolo: `detectDragGesturesAfterLongPress` + calcolo manuale dello scambio
+  in base all'altezza della card (misurata con `onGloballyPositioned`), niente
+  libreria esterna (non verificabile in sandbox). Implementato con una `Column`
+  semplice dentro un singolo `item { }` della `LazyColumn` esterna (non con
+  `items()` lazy), per tenere la logica di drag disaccoppiata dalla
+  virtualizzazione. Al rilascio, `onReorder` passa la lista riordinata a
+  `Repository.reorderItems`, che riassegna `position` (0..N-1) in una
+  transazione (`@Transaction` su un metodo default del DAO).
+
 ### Input vocale (dettatura)
 `AddFromTextScreen` ha un pulsante **🎤 Detta** che usa il riconoscimento
 vocale di sistema via `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` (lingua
@@ -74,6 +101,50 @@ consiglio all'utente è dettare **un articolo alla volta** (oppure editare le
 virgole a mano; l'anteprima è live). Approcci scartati per ora: Whisper
 on-device (APK enorme, build nativa non testabile in locale) e STT cloud
 (chiave API + privacy).
+
+### Notifica persistente ("lista senza sbloccare il telefono")
+L'utente voleva vedere/spuntare la lista senza sbloccare il telefono. **Vincolo
+reale di Android**: dopo Android 5 non esistono più i widget sulla schermata di
+blocco (a differenza di iOS) — non è una limitazione dell'app. Chiarito con
+l'utente via `AskUserQuestion`; ha scelto la **notifica persistente** (l'altra
+opzione scartata era il widget in home screen).
+- `notification/NotificationPrefs.kt` — flag on/off in `SharedPreferences`
+  (per-utente, non richiede DB).
+- `notification/ShoppingListNotifier.kt` — costruisce la notifica con
+  **`RemoteViews` custom** (`res/layout/notification_list.xml` +
+  `notification_row.xml`, un `addView` per riga, max 6 righe + "+N altri"):
+  è l'unico modo per avere **più righe cliccabili singolarmente** in una
+  notifica di sistema (gli `Action` standard sono troppo pochi/larghi, gli
+  stili Inbox/Messaging non hanno tap per riga). `DecoratedCustomViewStyle` +
+  `setCustomBigContentView`, canale `IMPORTANCE_LOW` (niente suono ad ogni
+  aggiornamento), `setVisibility(PUBLIC)` per essere leggibile sul lock screen
+  se l'utente ha attivato le notifiche lì.
+- `notification/ShoppingListActionReceiver.kt` — `BroadcastReceiver` **dichiarato
+  nel Manifest** (non dinamico) così riceve il tap anche ad app completamente
+  chiusa; usa `goAsync()` + coroutine `Dispatchers.IO` per poter chiamare il
+  repository (Room `suspend`) da `onReceive`. Ogni riga apre in broadcast con
+  un `data Uri` univoco (`shoppinglist://item/<id>`) per evitare che Android
+  collassi PendingIntent con extra diversi ma stessa action.
+- Icone notifica: vector drawable stencil scritti a mano (`ic_notification.xml`,
+  `ic_notif_row_unchecked.xml`) — nessuno script di generazione necessario,
+  bastano semplici `pathData` (icone Material standard "check_circle" e
+  "radio_button_unchecked").
+- **Limiti onesti (documentati anche in UI/comportamento, non solo qui)**:
+  dalla notifica si può solo **spuntare** un articolo (sparisce dalla lista
+  visibile in notifica); per togliere la spunta bisogna aprire l'app. Se
+  l'utente fa "Forza arresto" sull'app, Android blocca anche il
+  `BroadcastReceiver` finché non la riapre (limite di sistema, non risolvibile).
+  Serve il permesso `POST_NOTIFICATIONS` (richiesto a runtime su Android 13+,
+  gestito con `rememberLauncherForActivityResult` nel toggle del menu).
+  Toggle: voce "Promemoria in notifica" nel menu ⋮ dell'header (icona
+  campanella piena/vuota secondo lo stato).
+
+### Fix posizionamento del menu ⋮
+Il `DropdownMenu` collegato all'icona `MoreVert` (in alto a destra) si apriva
+percepito "a sinistra"/scollegato dall'icona. Fix: avvolgere **solo**
+`IconButton` + `DropdownMenu` in un `Box` dedicato (pattern Material standard
+per l'ancoraggio dei popup), invece di lasciarli come semplici fratelli dentro
+la `Row` dell'header.
 
 ## 3. Stile / design
 

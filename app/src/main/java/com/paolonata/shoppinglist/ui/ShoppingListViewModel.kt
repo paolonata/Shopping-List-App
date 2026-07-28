@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.paolonata.shoppinglist.data.ShoppingItem
 import com.paolonata.shoppinglist.data.ShoppingListDatabase
 import com.paolonata.shoppinglist.data.ShoppingListRepository
+import com.paolonata.shoppinglist.parser.ParsedItem
 import com.paolonata.shoppinglist.parser.WhatsAppListParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,14 +44,27 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
 
     fun addItemsFromText(text: String, onDone: (count: Int) -> Unit = {}) {
         val parsed = WhatsAppListParser.parse(text)
+        addParsedItems(parsed, onDone)
+    }
+
+    /** Aggiunge direttamente una lista già interpretata (es. l'anteprima con quantità modificate). */
+    fun addParsedItems(items: List<ParsedItem>, onDone: (count: Int) -> Unit = {}) {
         viewModelScope.launch {
-            repository.addParsedItems(parsed)
-            onDone(parsed.size)
+            repository.addParsedItems(items)
+            onDone(items.size)
         }
     }
 
     fun toggleChecked(item: ShoppingItem) {
         viewModelScope.launch { repository.toggleChecked(item) }
+    }
+
+    fun updateItem(item: ShoppingItem, name: String, quantity: Int) {
+        viewModelScope.launch { repository.updateItemDetails(item, name, quantity) }
+    }
+
+    fun reorderItems(orderedItems: List<ShoppingItem>) {
+        viewModelScope.launch { repository.reorderItems(orderedItems) }
     }
 
     fun deleteItem(item: ShoppingItem) {

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Richiesto da Android 13+ per mostrare notifiche (incluso il promemoria persistente) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Consente di risolvere l'app di riconoscimento vocale su Android 11+ (package visibility) -->
     <queries>
         <intent>
@@ -39,6 +42,11 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- Riceve il tocco sulle righe della notifica persistente (funziona anche ad app chiusa) -->
+        <receiver
+            android:name=".notification.ShoppingListActionReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

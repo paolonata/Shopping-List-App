@@ -13,7 +13,11 @@ private class FakeShoppingItemDao : ShoppingItemDao {
 
     override fun observeAll(): Flow<List<ShoppingItem>> = state
 
+    override suspend fun getAllOnce(): List<ShoppingItem> = state.value
+
     override suspend fun getUnchecked(): List<ShoppingItem> = state.value.filter { !it.isChecked }
+
+    override suspend fun getById(id: Long): ShoppingItem? = state.value.firstOrNull { it.id == id }
 
     override suspend fun insertAll(items: List<ShoppingItem>) {
         val withIds = items.map { it.copy(id = nextId++) }
@@ -98,5 +102,63 @@ class ShoppingListRepositoryTest {
         val remaining = dao.getUnchecked()
         assertEquals(1, remaining.size)
         assertEquals("Uova", remaining.single().name)
+    }
+
+    @Test
+    fun `updateItemDetails changes name and quantity`() = runBlocking {
+        val dao = FakeShoppingItemDao()
+        val repository = ShoppingListRepository(dao)
+
+        repository.addParsedItems(listOf(ParsedItem(name = "Latte")))
+        val item = dao.getUnchecked().single()
+        repository.updateItemDetails(item, "Latte di soia", 3)
+
+        val updated = dao.getUnchecked().single()
+        assertEquals("Latte di soia", updated.name)
+        assertEquals(3, updated.quantity)
+    }
+
+    @Test
+    fun `updateItemDetails ignores a blank name`() = runBlocking {
+        val dao = FakeShoppingItemDao()
+        val repository = ShoppingListRepository(dao)
+
+        repository.addParsedItems(listOf(ParsedItem(name = "Latte")))
+        val item = dao.getUnchecked().single()
+        repository.updateItemDetails(item, "   ", 5)
+
+        val unchanged = dao.getUnchecked().single()
+        assertEquals("Latte", unchanged.name)
+        assertEquals(1, unchanged.quantity)
+    }
+
+    @Test
+    fun `reorderItems persists the new order via position`() = runBlocking {
+        val dao = FakeShoppingItemDao()
+        val repository = ShoppingListRepository(dao)
+
+        repository.addParsedItems(
+            listOf(ParsedItem(name = "Pane"), ParsedItem(name = "Latte"), ParsedItem(name = "Uova")),
+        )
+        val current = dao.getUnchecked().sortedBy { it.position }
+        val reversed = current.reversed()
+
+        repository.reorderItems(reversed)
+
+        val afterReorder = dao.getUnchecked().sortedBy { it.position }
+        assertEquals(reversed.map { it.name }, afterReorder.map { it.name })
+    }
+
+    @Test
+    fun `markCheckedById marks the item as checked`() = runBlocking {
+        val dao = FakeShoppingItemDao()
+        val repository = ShoppingListRepository(dao)
+
+        repository.addParsedItems(listOf(ParsedItem(name = "Pane")))
+        val item = dao.getUnchecked().single()
+
+        repository.markCheckedById(item.id)
+
+        assertEquals(true, dao.getById(item.id)?.isChecked)
     }
 }

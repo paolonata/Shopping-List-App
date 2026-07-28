@@ -16,6 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.paolonata.shoppinglist.notification.NotificationPrefs
+import com.paolonata.shoppinglist.notification.ShoppingListNotifier
 import com.paolonata.shoppinglist.ui.AddFromTextScreen
 import com.paolonata.shoppinglist.ui.HomeScreen
 import com.paolonata.shoppinglist.ui.ShoppingListViewModel
@@ -48,6 +50,14 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Tiene aggiornata la notifica persistente (se attiva) ogni volta che la
+                    // lista cambia, così riflette anche le modifiche fatte dentro l'app.
+                    LaunchedEffect(items) {
+                        if (NotificationPrefs.isEnabled(this@MainActivity)) {
+                            ShoppingListNotifier.show(this@MainActivity, items)
+                        }
+                    }
+
                     Crossfade(targetState = screen, label = "screen") { current ->
                         when (current) {
                             is Screen.Home -> HomeScreen(
@@ -56,6 +66,8 @@ class MainActivity : ComponentActivity() {
                                 onAddItem = { viewModel.addItemsFromText(it) },
                                 onToggleChecked = viewModel::toggleChecked,
                                 onDeleteItem = viewModel::deleteItem,
+                                onEditItem = viewModel::updateItem,
+                                onReorderItems = viewModel::reorderItems,
                                 onClearChecked = viewModel::clearChecked,
                                 onClearAll = viewModel::clearAll,
                             )
@@ -63,8 +75,8 @@ class MainActivity : ComponentActivity() {
                             is Screen.AddFromText -> AddFromTextScreen(
                                 initialText = current.initialText,
                                 onParse = viewModel::previewParse,
-                                onConfirm = { text ->
-                                    viewModel.addItemsFromText(text) { count ->
+                                onConfirm = { parsedItems ->
+                                    viewModel.addParsedItems(parsedItems) { count ->
                                         Toast.makeText(
                                             this@MainActivity,
                                             getString(R.string.add_items_added_toast, count),

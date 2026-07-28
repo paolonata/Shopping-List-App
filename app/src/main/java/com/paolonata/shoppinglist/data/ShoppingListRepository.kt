@@ -7,8 +7,16 @@ class ShoppingListRepository(private val dao: ShoppingItemDao) {
 
     fun observeItems(): Flow<List<ShoppingItem>> = dao.observeAll()
 
+    suspend fun getAllOnce(): List<ShoppingItem> = dao.getAllOnce()
+
     suspend fun toggleChecked(item: ShoppingItem) {
         dao.update(item.copy(isChecked = !item.isChecked))
+    }
+
+    /** Usata dalla notifica persistente: spunta un articolo conoscendone solo l'id. */
+    suspend fun markCheckedById(id: Long) {
+        val item = dao.getById(id) ?: return
+        if (!item.isChecked) dao.update(item.copy(isChecked = true))
     }
 
     suspend fun deleteItem(item: ShoppingItem) {
@@ -21,6 +29,25 @@ class ShoppingListRepository(private val dao: ShoppingItemDao) {
 
     suspend fun clearAll() {
         dao.deleteAll()
+    }
+
+    /** Modifica nome e quantità di un articolo già presente. */
+    suspend fun updateItemDetails(item: ShoppingItem, name: String, quantity: Int) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        dao.update(item.copy(name = trimmed, quantity = quantity.coerceAtLeast(1)))
+    }
+
+    /**
+     * Persiste un nuovo ordine per [orderedItems] (tipicamente la sola sezione "da comprare"):
+     * riassegna la `position` in base all'indice nella lista, in un'unica transazione.
+     */
+    suspend fun reorderItems(orderedItems: List<ShoppingItem>) {
+        if (orderedItems.isEmpty()) return
+        val withNewPositions = orderedItems.mapIndexed { index, item ->
+            item.copy(position = index.toLong())
+        }
+        dao.updateAll(withNewPositions)
     }
 
     /**

@@ -1,7 +1,13 @@
 package com.paolonata.shoppinglist.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -9,6 +15,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +42,11 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.DropdownMenu
@@ -50,6 +61,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,6 +73,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -70,8 +84,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.core.content.ContextCompat
 import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.data.ShoppingItem
+import com.paolonata.shoppinglist.notification.NotificationPrefs
+import com.paolonata.shoppinglist.notification.ShoppingListNotifier
 import com.paolonata.shoppinglist.ui.theme.brandGradient
 
 @Composable
@@ -81,10 +99,13 @@ fun HomeScreen(
     onAddItem: (String) -> Unit,
     onToggleChecked: (ShoppingItem) -> Unit,
     onDeleteItem: (ShoppingItem) -> Unit,
+    onEditItem: (ShoppingItem, String, Int) -> Unit,
+    onReorderItems: (List<ShoppingItem>) -> Unit,
     onClearChecked: () -> Unit,
     onClearAll: () -> Unit,
 ) {
     var inlineAdding by remember { mutableStateOf(false) }
+    var editingItemId by remember { mutableStateOf<Long?>(null) }
     val listState = rememberLazyListState()
     val context = LocalContext.current
 
@@ -104,6 +125,7 @@ fun HomeScreen(
                 onShare = { shareList(context, items) },
                 onClearChecked = onClearChecked,
                 onClearAll = onClearAll,
+                items = items,
             )
         },
         bottomBar = {
@@ -126,12 +148,19 @@ fun HomeScreen(
             ) {
                 if (toBuy.isNotEmpty()) {
                     item { SectionHeader(stringResource(R.string.home_section_to_buy), toBuy.size) }
-                    items(toBuy, key = { it.id }) { shoppingItem ->
-                        ItemCard(
-                            item = shoppingItem,
+                    item {
+                        ReorderableToBuySection(
+                            items = toBuy,
+                            editingItemId = editingItemId,
                             onToggleChecked = onToggleChecked,
                             onDeleteItem = onDeleteItem,
-                            modifier = Modifier.animateItem(),
+                            onStartEdit = { editingItemId = it },
+                            onSaveEdit = { item, name, qty ->
+                                onEditItem(item, name, qty)
+                                editingItemId = null
+                            },
+                            onCancelEdit = { editingItemId = null },
+                            onReorder = onReorderItems,
                         )
                     }
                 }
@@ -140,8 +169,15 @@ fun HomeScreen(
                     items(inCart, key = { it.id }) { shoppingItem ->
                         ItemCard(
                             item = shoppingItem,
+                            isEditing = editingItemId == shoppingItem.id,
                             onToggleChecked = onToggleChecked,
                             onDeleteItem = onDeleteItem,
+                            onStartEdit = { editingItemId = it },
+                            onSaveEdit = { item, name, qty ->
+                                onEditItem(item, name, qty)
+                                editingItemId = null
+                            },
+                            onCancelEdit = { editingItemId = null },
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -171,6 +207,90 @@ private fun shareList(context: Context, items: List<ShoppingItem>) {
         putExtra(Intent.EXTRA_TEXT, sb.toString())
     }
     context.startActivity(Intent.createChooser(send, context.getString(R.string.share_chooser)))
+}
+
+@Composable
+private fun ReorderableToBuySection(
+    items: List<ShoppingItem>,
+    editingItemId: Long?,
+    onToggleChecked: (ShoppingItem) -> Unit,
+    onDeleteItem: (ShoppingItem) -> Unit,
+    onStartEdit: (Long) -> Unit,
+    onSaveEdit: (ShoppingItem, String, Int) -> Unit,
+    onCancelEdit: () -> Unit,
+    onReorder: (List<ShoppingItem>) -> Unit,
+) {
+    var localItems by remember { mutableStateOf(items) }
+    var draggingId by remember { mutableStateOf<Long?>(null) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+    val itemHeights = remember { mutableStateMapOf<Long, Int>() }
+
+    LaunchedEffect(items) {
+        if (draggingId == null) localItems = items
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        localItems.forEach { item ->
+            val isDragging = item.id == draggingId
+            ItemCard(
+                item = item,
+                isEditing = editingItemId == item.id,
+                onToggleChecked = onToggleChecked,
+                onDeleteItem = onDeleteItem,
+                onStartEdit = onStartEdit,
+                onSaveEdit = onSaveEdit,
+                onCancelEdit = onCancelEdit,
+                dragHandle = {
+                    Icon(
+                        imageVector = Icons.Default.DragHandle,
+                        contentDescription = stringResource(R.string.reorder_handle_cd),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(start = 2.dp)
+                            .size(22.dp)
+                            .pointerInput(item.id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { draggingId = item.id; dragOffsetY = 0f },
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        dragOffsetY += amount.y
+                                        val currentIndex = localItems.indexOfFirst { it.id == item.id }
+                                        val height = itemHeights[item.id]
+                                        if (currentIndex < 0 || height == null || height == 0) {
+                                            return@detectDragGesturesAfterLongPress
+                                        }
+                                        if (dragOffsetY > height / 2 && currentIndex < localItems.lastIndex) {
+                                            localItems = localItems.toMutableList().apply {
+                                                add(currentIndex + 1, removeAt(currentIndex))
+                                            }
+                                            dragOffsetY -= height
+                                        } else if (dragOffsetY < -height / 2 && currentIndex > 0) {
+                                            localItems = localItems.toMutableList().apply {
+                                                add(currentIndex - 1, removeAt(currentIndex))
+                                            }
+                                            dragOffsetY += height
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        draggingId = null
+                                        dragOffsetY = 0f
+                                        onReorder(localItems)
+                                    },
+                                    onDragCancel = {
+                                        draggingId = null
+                                        dragOffsetY = 0f
+                                    },
+                                )
+                            },
+                    )
+                },
+                modifier = Modifier
+                    .onGloballyPositioned { coords -> itemHeights[item.id] = coords.size.height }
+                    .zIndex(if (isDragging) 1f else 0f)
+                    .graphicsLayer { translationY = if (isDragging) dragOffsetY else 0f },
+            )
+        }
+    }
 }
 
 @Composable
@@ -246,8 +366,46 @@ private fun CleanHeader(
     onShare: () -> Unit,
     onClearChecked: () -> Unit,
     onClearAll: () -> Unit,
+    items: List<ShoppingItem>,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var notifEnabled by remember { mutableStateOf(NotificationPrefs.isEnabled(context)) }
+    val permissionDeniedMessage = stringResource(R.string.notification_permission_denied)
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            notifEnabled = true
+            NotificationPrefs.setEnabled(context, true)
+            ShoppingListNotifier.show(context, items)
+        } else {
+            Toast.makeText(context, permissionDeniedMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun toggleNotification() {
+        if (notifEnabled) {
+            notifEnabled = false
+            NotificationPrefs.setEnabled(context, false)
+            ShoppingListNotifier.cancel(context)
+            return
+        }
+        val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        if (needsRuntimePermission) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            notifEnabled = true
+            NotificationPrefs.setEnabled(context, true)
+            ShoppingListNotifier.show(context, items)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -269,22 +427,41 @@ private fun CleanHeader(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.home_menu_clear_checked)) },
-                        onClick = { menuExpanded = false; onClearChecked() },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.home_menu_clear_all)) },
-                        onClick = { menuExpanded = false; onClearAll() },
-                    )
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (notifEnabled) {
+                                        Icons.Default.NotificationsActive
+                                    } else {
+                                        Icons.Default.NotificationsNone
+                                    },
+                                    contentDescription = null,
+                                )
+                            },
+                            text = { Text(stringResource(R.string.notification_menu_toggle)) },
+                            onClick = {
+                                menuExpanded = false
+                                toggleNotification()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.home_menu_clear_checked)) },
+                            onClick = { menuExpanded = false; onClearChecked() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.home_menu_clear_all)) },
+                            onClick = { menuExpanded = false; onClearAll() },
+                        )
+                    }
                 }
             }
         }
@@ -327,11 +504,51 @@ private fun SectionHeader(text: String, count: Int) {
 }
 
 @Composable
+private fun QuantityStepper(quantity: Int, onChange: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(
+            onClick = { if (quantity > 1) onChange(quantity - 1) },
+            modifier = Modifier.size(28.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Remove,
+                contentDescription = stringResource(R.string.quantity_decrease_cd),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(
+            text = quantity.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(20.dp),
+            textAlign = TextAlign.Center,
+        )
+        IconButton(
+            onClick = { onChange(quantity + 1) },
+            modifier = Modifier.size(28.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = stringResource(R.string.quantity_increase_cd),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun ItemCard(
     item: ShoppingItem,
+    isEditing: Boolean,
     onToggleChecked: (ShoppingItem) -> Unit,
     onDeleteItem: (ShoppingItem) -> Unit,
+    onStartEdit: (Long) -> Unit,
+    onSaveEdit: (ShoppingItem, String, Int) -> Unit,
+    onCancelEdit: () -> Unit,
     modifier: Modifier = Modifier,
+    dragHandle: (@Composable () -> Unit)? = null,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -339,147 +556,143 @@ private fun ItemCard(
         shadowElevation = 2.dp,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier
-                .clickable { onToggleChecked(item) }
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val checkColor by animateColorAsState(
-                targetValue = if (item.isChecked) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.outline
-                },
-                animationSpec = tween(200),
-                label = "checkColor",
+        if (isEditing) {
+            EditItemRow(
+                item = item,
+                onSave = { name, quantity -> onSaveEdit(item, name, quantity) },
+                onCancel = onCancelEdit,
             )
-            val checkScale by animateFloatAsState(
-                targetValue = if (item.isChecked) 1.12f else 1f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                label = "checkScale",
-            )
-            Icon(
-                imageVector = if (item.isChecked) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = checkColor,
-                modifier = Modifier
-                    .size(26.dp)
-                    .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            val textColor by animateColorAsState(
-                targetValue = if (item.isChecked) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                animationSpec = tween(200),
-                label = "textColor",
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else null,
-                    color = textColor,
+        } else {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val checkColor by animateColorAsState(
+                    targetValue = if (item.isChecked) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
+                    animationSpec = tween(200),
+                    label = "checkColor",
                 )
-                item.note?.let { note ->
+                val checkScale by animateFloatAsState(
+                    targetValue = if (item.isChecked) 1.12f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                    label = "checkScale",
+                )
+                Icon(
+                    imageVector = if (item.isChecked) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = checkColor,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { onToggleChecked(item) }
+                        .size(26.dp)
+                        .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                val textColor by animateColorAsState(
+                    targetValue = if (item.isChecked) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    animationSpec = tween(200),
+                    label = "textColor",
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onStartEdit(item.id) },
+                ) {
                     Text(
-                        text = note,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = item.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        textDecoration = if (item.isChecked) TextDecoration.LineThrough else null,
+                        color = textColor,
                     )
+                    item.note?.let { note ->
+                        Text(
+                            text = note,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
+                if (item.quantity > 1) {
+                    QuantityPill(item.quantity)
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                dragHandle?.invoke()
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.home_delete_item_cd),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { onDeleteItem(item) }
+                        .padding(4.dp)
+                        .size(18.dp),
+                )
             }
-            if (item.quantity > 1) {
-                QuantityPill(item.quantity)
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.home_delete_item_cd),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .clickable { onDeleteItem(item) }
-                    .padding(4.dp)
-                    .size(18.dp),
-            )
         }
     }
 }
 
 @Composable
-private fun InlineAddRow(onAdd: (String) -> Unit, onClose: () -> Unit) {
-    var value by remember { mutableStateOf("") }
+private fun EditItemRow(item: ShoppingItem, onSave: (String, Int) -> Unit, onCancel: () -> Unit) {
+    var name by remember(item.id) { mutableStateOf(item.name) }
+    var quantity by remember(item.id) { mutableStateOf(item.quantity) }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
 
     fun submit() {
-        val trimmed = value.trim()
-        if (trimmed.isNotEmpty()) {
-            onAdd(trimmed)
-            value = ""
-        } else {
-            onClose()
-        }
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) onSave(trimmed, quantity) else onCancel()
     }
 
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth(),
+    Row(
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Icon(
+            imageVector = if (item.isChecked) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (item.isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(26.dp),
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        BasicTextField(
+            value = name,
+            onValueChange = { name = it },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(onDone = { submit() }),
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
+        )
+        QuantityStepper(quantity = quantity) { quantity = it.coerceAtLeast(1) }
+        IconButton(onClick = { submit() }) {
             Icon(
-                imageVector = Icons.Outlined.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(26.dp),
+                imageVector = Icons.Default.Check,
+                contentDescription = stringResource(R.string.edit_confirm_cd),
+                tint = MaterialTheme.colorScheme.primary,
             )
-            Spacer(modifier = Modifier.width(14.dp))
-            BasicTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(onDone = { submit() }),
-                modifier = Modifier
-                    .weight(1f)
-                    .focusRequester(focusRequester),
-                decorationBox = { innerTextField ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (value.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.quick_add_hint),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
+        }
+        IconButton(onClick = onCancel) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(R.string.edit_cancel_cd),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            IconButton(onClick = { submit() }) {
-                Icon(
-                    imageVector = if (value.isBlank()) Icons.Default.Close else Icons.Default.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
         }
     }
 }
@@ -537,6 +750,82 @@ private fun EmptyState(modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+@Composable
+private fun InlineAddRow(onAdd: (String) -> Unit, onClose: () -> Unit) {
+    var value by remember { mutableStateOf("") }
+    var quantity by remember { mutableStateOf(1) }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+
+    fun submit() {
+        val trimmed = value.trim()
+        if (trimmed.isNotEmpty()) {
+            onAdd(if (quantity > 1) "$quantity $trimmed" else trimmed)
+            value = ""
+            quantity = 1
+        } else {
+            onClose()
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(26.dp),
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            BasicTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.quick_add_hint),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+            )
+            QuantityStepper(quantity = quantity) { quantity = it.coerceAtLeast(1) }
+            IconButton(onClick = { submit() }) {
+                Icon(
+                    imageVector = if (value.isBlank()) Icons.Default.Close else Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }
