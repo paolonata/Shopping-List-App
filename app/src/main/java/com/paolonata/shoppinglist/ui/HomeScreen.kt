@@ -448,6 +448,31 @@ private fun IconChipButton(icon: androidx.compose.ui.graphics.vector.ImageVector
 }
 
 @Composable
+private fun ThemeRadioItem(label: String, selected: Boolean, onSelect: () -> Unit) {
+    DropdownMenuItem(
+        leadingIcon = {
+            Icon(
+                imageVector = if (selected) Icons.Default.Check else Icons.Default.Close,
+                contentDescription = null,
+                tint = if (selected) {
+                    MaterialTheme.colorScheme.onBackground
+                } else {
+                    androidx.compose.ui.graphics.Color.Transparent
+                },
+                modifier = Modifier.size(18.dp),
+            )
+        },
+        text = {
+            Text(
+                text = label,
+                color = if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        onClick = onSelect,
+    )
+}
+
+@Composable
 private fun MinimalSectionHeader(text: String, count: Int) {
     Row(
         modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 6.dp),
