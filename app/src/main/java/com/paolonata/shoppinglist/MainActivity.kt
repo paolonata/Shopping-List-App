@@ -22,6 +22,7 @@ import com.paolonata.shoppinglist.ui.AddFromTextScreen
 import com.paolonata.shoppinglist.ui.HomeScreen
 import com.paolonata.shoppinglist.ui.ShoppingListViewModel
 import com.paolonata.shoppinglist.ui.theme.ListaSpesaTheme
+import com.paolonata.shoppinglist.ui.theme.ThemePrefs
 
 private sealed interface Screen {
     data object Home : Screen
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ThemePrefs.init(this)
         handleShareIntent(intent)
 
         setContent {

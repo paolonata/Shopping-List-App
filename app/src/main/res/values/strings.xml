@@ -15,7 +15,11 @@
     <string name="home_section_in_cart">Presi</string>
     <string name="home_delete_item_cd">Elimina</string>
     <string name="home_progress">%1$d / %2$d</string>
-    <string name="home_progress_label">fatti</string>
+    <string name="home_progress_label">presi</string>
+    <string name="theme_menu">Tema</string>
+    <string name="theme_auto">Automatico (sistema)</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
 
     <string name="add_title">Nuova lista</string>
     <string name="add_hint">Es: Acqua bambini, pollo pannato/nuggets, iogurt Danone, 2 pere, 2 mele…</string>
@@ -48,8 +52,11 @@
     <string name="notification_channel_name">Promemoria lista spesa</string>
     <string name="notification_channel_description">Notifica persistente con gli articoli ancora da comprare, spuntabili senza aprire l\'app</string>
     <string name="notification_progress">%1$d / %2$d</string>
-    <string name="notification_more_items">+%1$d altri articoli</string>
+    <string name="notification_title">Spesa · %1$d di %2$d presi</string>
+    <string name="notification_more_items">+ altri %1$d</string>
     <string name="notification_all_done_body">Tutto preso 🎉</string>
-    <string name="notification_todo_body">%1$d ancora da prendere · trascina giù per spuntare</string>
+    <string name="notification_one_left">1 ancora da prendere</string>
+    <string name="notification_n_left">%1$d ancora da prendere</string>
+    <string name="notification_check_action">%1$s</string>
     <string name="app_short_name">Spesa</string>
 </resources>

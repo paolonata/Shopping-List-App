@@ -144,6 +144,17 @@ opzione scartata era il widget in home screen).
   repository (Room `suspend`) da `onReceive`. Ogni riga apre in broadcast con
   un `data Uri` univoco (`shoppinglist://item/<id>`) per evitare che Android
   collassi PendingIntent con extra diversi ma stessa action.
+- **Approccio notifica leggibile su lockscreen**: NON usiamo più custom
+  `RemoteViews` (il system UI sul lockscreen li ignora o li rende in un blob
+  di testo poco leggibile). Ora usiamo `NotificationCompat.InboxStyle` per
+  righe separate con font di sistema + fino a **3 `NotificationCompat.Action`**
+  come pulsanti "✓ Latte", "✓ Pane"... visibili anche sul lock screen. I file
+  `res/layout/notification_list.xml`, `notification_row.xml` e
+  `drawable/ic_notif_row_unchecked.xml` restano nel repo ma non sono più
+  referenziati dal codice (si possono rimuovere in un cleanup futuro).
+  Canale attuale: `shopping_list_reminder_v3` (i channel sono immutabili
+  post-creazione, quindi ogni cambio settings importante = nuovo channel ID
+  con cleanup dei precedenti in `cancel()`).
 - Icone notifica: vector drawable stencil scritti a mano (`ic_notification.xml`,
   `ic_notif_row_unchecked.xml`) — nessuno script di generazione necessario,
   bastano semplici `pathData` (icone Material standard "check_circle" e

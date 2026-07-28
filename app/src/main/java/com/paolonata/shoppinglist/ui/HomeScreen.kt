@@ -40,6 +40,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
@@ -87,6 +88,10 @@ import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.data.ShoppingItem
 import com.paolonata.shoppinglist.notification.NotificationPrefs
 import com.paolonata.shoppinglist.notification.ShoppingListNotifier
+import com.paolonata.shoppinglist.ui.theme.ThemeMode
+import com.paolonata.shoppinglist.ui.theme.ThemePrefs
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun HomeScreen(
@@ -338,24 +343,59 @@ private fun HeroHeader(
             if (total > 0) {
                 IconChipButton(icon = Icons.Default.IosShare, onClick = onShare)
                 Spacer(modifier = Modifier.width(4.dp))
-                Box {
-                    IconChipButton(icon = Icons.Default.MoreHoriz, onClick = { menuExpanded = true })
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                        DropdownMenuItem(
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = if (notifEnabled) Icons.Default.NotificationsActive else Icons.Default.NotificationsNone,
-                                    contentDescription = null,
-                                    tint = if (notifEnabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = {
-                                Text(
-                                    text = if (notifEnabled) stringResource(R.string.notification_menu_toggle_off) else stringResource(R.string.notification_menu_toggle_on),
-                                )
-                            },
-                            onClick = { menuExpanded = false; toggleNotification() },
-                        )
+            }
+            Box {
+                IconChipButton(icon = Icons.Default.MoreHoriz, onClick = { menuExpanded = true })
+                val themeMode by ThemePrefs.mode.collectAsState()
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    // Tema — sempre disponibile
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Brightness4,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = { Text(stringResource(R.string.theme_menu)) },
+                        enabled = false,
+                        onClick = {},
+                    )
+                    ThemeRadioItem(
+                        label = stringResource(R.string.theme_auto),
+                        selected = themeMode == ThemeMode.AUTO,
+                        onSelect = { ThemePrefs.set(context, ThemeMode.AUTO); menuExpanded = false },
+                    )
+                    ThemeRadioItem(
+                        label = stringResource(R.string.theme_light),
+                        selected = themeMode == ThemeMode.LIGHT,
+                        onSelect = { ThemePrefs.set(context, ThemeMode.LIGHT); menuExpanded = false },
+                    )
+                    ThemeRadioItem(
+                        label = stringResource(R.string.theme_dark),
+                        selected = themeMode == ThemeMode.DARK,
+                        onSelect = { ThemePrefs.set(context, ThemeMode.DARK); menuExpanded = false },
+                    )
+                    HorizontalDivider()
+                    // Notifica — sempre disponibile
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (notifEnabled) Icons.Default.NotificationsActive else Icons.Default.NotificationsNone,
+                                contentDescription = null,
+                                tint = if (notifEnabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = if (notifEnabled) stringResource(R.string.notification_menu_toggle_off) else stringResource(R.string.notification_menu_toggle_on),
+                            )
+                        },
+                        onClick = { menuExpanded = false; toggleNotification() },
+                    )
+                    // Clear — solo se ci sono articoli
+                    if (total > 0) {
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.home_menu_clear_checked)) },
                             onClick = { menuExpanded = false; onClearChecked() },
