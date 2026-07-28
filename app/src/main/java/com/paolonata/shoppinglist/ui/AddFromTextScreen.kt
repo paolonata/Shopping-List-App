@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -101,20 +101,28 @@ fun AddFromTextScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                    .padding(start = 12.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onCancel) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable(onClick = onCancel),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.add_cancel_button),
                         tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = stringResource(R.string.add_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
@@ -215,27 +223,29 @@ fun AddFromTextScreen(
 @Composable
 private fun PreviewCard(item: ParsedItem, onQuantityChange: (Int) -> Unit) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.Outlined.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(22.dp),
+            // Quadratino placeholder coerente col SquareCheckbox della HomeScreen
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 item.note?.let { note ->
                     Text(
@@ -247,7 +257,7 @@ private fun PreviewCard(item: ParsedItem, onQuantityChange: (Int) -> Unit) {
             }
             IconButton(
                 onClick = { if (item.quantity > 1) onQuantityChange(item.quantity - 1) },
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(30.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Remove,
@@ -258,19 +268,19 @@ private fun PreviewCard(item: ParsedItem, onQuantityChange: (Int) -> Unit) {
             }
             Text(
                 text = item.quantity.toString(),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(20.dp),
+                modifier = Modifier.width(22.dp),
                 textAlign = TextAlign.Center,
             )
             IconButton(
                 onClick = { onQuantityChange(item.quantity + 1) },
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(30.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = stringResource(R.string.quantity_increase_cd),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -280,11 +290,11 @@ private fun PreviewCard(item: ParsedItem, onQuantityChange: (Int) -> Unit) {
 
 @Composable
 private fun ConfirmButton(enabled: Boolean, label: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(28.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(56.dp)
             .clip(shape)
             .background(
                 if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
@@ -294,8 +304,8 @@ private fun ConfirmButton(enabled: Boolean, label: String, onClick: () -> Unit) 
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

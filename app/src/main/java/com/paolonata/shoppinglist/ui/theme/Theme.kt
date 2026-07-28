@@ -8,86 +8,84 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.paolonata.shoppinglist.R
 
-// Palette moderna e neutra ispirata a Notion/Linear: neutri "zinc" (grigi puri, non caldi
-// né freddi) con un accento indigo elegante. Sostituisce il rosso corallo di brand.
-private val AccentLight = Color(0xFF4F46E5) // indigo-600
-private val AccentDark = Color(0xFF818CF8)  // indigo-400 (più chiaro sul fondo scuro)
+// Palette "2026": neutri puri (bianco quasi assoluto / nero quasi assoluto) con un
+// unico accento vibrante lime, associato a "fresco / spesa" e molto attuale.
+private val AccentLight = Color(0xFFCCFF00) // acid lime, cioè giallo-verde saturo
+private val AccentDark = Color(0xFFCCFF00)  // stesso in dark per consistenza brand
+private val OnAccent = Color(0xFF0A0A0A)    // testo sopra accento: nero pieno
 
-/**
- * Un gradiente più discreto sul viola-indigo, usato solo su elementi decorativi
- * (empty state). Non più sui bottoni: preferiamo tinte piene per una lettura più netta.
- */
-fun brandGradient(): Brush = Brush.linearGradient(
-    listOf(Color(0xFF6366F1), Color(0xFF4F46E5)),
+fun brandGradient(): Brush = Brush.linearGradient(listOf(AccentLight, AccentLight))
+
+// Space Grotesk: font geometrico moderno (Vercel/Stripe/Uber). Il Medium fa da
+// SemiBold quando serve (Space Grotesk non ha uno static SemiBold in questa fonte).
+private val SpaceGrotesk = FontFamily(
+    Font(R.font.spacegrotesk_light, FontWeight.Light),
+    Font(R.font.spacegrotesk_regular, FontWeight.Normal),
+    Font(R.font.spacegrotesk_medium, FontWeight.Medium),
+    Font(R.font.spacegrotesk_medium, FontWeight.SemiBold),
+    Font(R.font.spacegrotesk_bold, FontWeight.Bold),
+    Font(R.font.spacegrotesk_bold, FontWeight.ExtraBold),
 )
 
-private val OpenSans = FontFamily(
-    Font(R.font.opensans_regular, FontWeight.Normal),
-    Font(R.font.opensans_regular, FontWeight.Medium),
-    Font(R.font.opensans_semibold, FontWeight.SemiBold),
-    Font(R.font.opensans_bold, FontWeight.Bold),
-    Font(R.font.opensans_extrabold, FontWeight.ExtraBold),
+// Typography con scala più contrastata (grandi titoli display + testo compatto),
+// tracking negativo sui titoli come nei design "2026".
+private val AppTypography: Typography = Typography(
+    displayLarge = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 57.sp, letterSpacing = (-1.5).sp),
+    displayMedium = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 45.sp, letterSpacing = (-1).sp),
+    displaySmall = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 36.sp, letterSpacing = (-0.5).sp),
+    headlineLarge = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 32.sp, letterSpacing = (-0.5).sp),
+    headlineMedium = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 28.sp, letterSpacing = (-0.5).sp),
+    headlineSmall = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 24.sp, letterSpacing = (-0.3).sp),
+    titleLarge = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 22.sp),
+    titleMedium = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 17.sp),
+    titleSmall = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 15.sp),
+    bodyLarge = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 16.sp),
+    bodyMedium = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 14.sp),
+    bodySmall = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 12.sp),
+    labelLarge = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 14.sp, letterSpacing = 0.1.sp),
+    labelMedium = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 0.4.sp),
+    labelSmall = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.5.sp),
 )
-
-private val AppTypography: Typography
-    get() {
-        val d = Typography()
-        return Typography(
-            displayLarge = d.displayLarge.copy(fontFamily = OpenSans),
-            displayMedium = d.displayMedium.copy(fontFamily = OpenSans),
-            displaySmall = d.displaySmall.copy(fontFamily = OpenSans),
-            headlineLarge = d.headlineLarge.copy(fontFamily = OpenSans),
-            headlineMedium = d.headlineMedium.copy(fontFamily = OpenSans),
-            headlineSmall = d.headlineSmall.copy(fontFamily = OpenSans),
-            titleLarge = d.titleLarge.copy(fontFamily = OpenSans),
-            titleMedium = d.titleMedium.copy(fontFamily = OpenSans),
-            titleSmall = d.titleSmall.copy(fontFamily = OpenSans),
-            bodyLarge = d.bodyLarge.copy(fontFamily = OpenSans),
-            bodyMedium = d.bodyMedium.copy(fontFamily = OpenSans),
-            bodySmall = d.bodySmall.copy(fontFamily = OpenSans),
-            labelLarge = d.labelLarge.copy(fontFamily = OpenSans),
-            labelMedium = d.labelMedium.copy(fontFamily = OpenSans),
-            labelSmall = d.labelSmall.copy(fontFamily = OpenSans),
-        )
-    }
 
 private val LightColors = lightColorScheme(
     primary = AccentLight,
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE0E7FF), // indigo-100
-    onPrimaryContainer = Color(0xFF312E81), // indigo-900
-    secondary = Color(0xFF52525B), // zinc-600
+    onPrimary = OnAccent,
+    primaryContainer = AccentLight,
+    onPrimaryContainer = OnAccent,
+    secondary = Color(0xFF0A0A0A),
     onSecondary = Color(0xFFFFFFFF),
-    background = Color(0xFFFAFAFA), // zinc-50
-    onBackground = Color(0xFF18181B), // zinc-900
+    background = Color(0xFFFAFAFA),
+    onBackground = Color(0xFF0A0A0A),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF18181B),
-    surfaceVariant = Color(0xFFF4F4F5), // zinc-100
-    onSurfaceVariant = Color(0xFF71717A), // zinc-500
-    outline = Color(0xFFE4E4E7), // zinc-200
-    outlineVariant = Color(0xFFF4F4F5), // zinc-100
+    onSurface = Color(0xFF0A0A0A),
+    surfaceVariant = Color(0xFFF4F4F5),
+    onSurfaceVariant = Color(0xFF71717A),
+    outline = Color(0xFFE4E4E7),
+    outlineVariant = Color(0xFFF4F4F5),
 )
 
 private val DarkColors = darkColorScheme(
     primary = AccentDark,
-    onPrimary = Color(0xFF1E1B4B), // indigo-950
-    primaryContainer = Color(0xFF3730A3), // indigo-800
-    onPrimaryContainer = Color(0xFFE0E7FF),
-    secondary = Color(0xFFA1A1AA), // zinc-400
-    onSecondary = Color(0xFF18181B),
-    background = Color(0xFF09090B), // zinc-950
+    onPrimary = OnAccent,
+    primaryContainer = AccentDark,
+    onPrimaryContainer = OnAccent,
+    secondary = Color(0xFFFAFAFA),
+    onSecondary = Color(0xFF0A0A0A),
+    background = Color(0xFF0A0A0A),
     onBackground = Color(0xFFFAFAFA),
-    surface = Color(0xFF18181B), // zinc-900
+    surface = Color(0xFF151515),
     onSurface = Color(0xFFFAFAFA),
-    surfaceVariant = Color(0xFF27272A), // zinc-800
-    onSurfaceVariant = Color(0xFFA1A1AA),
-    outline = Color(0xFF3F3F46), // zinc-700
-    outlineVariant = Color(0xFF27272A),
+    surfaceVariant = Color(0xFF1F1F1F),
+    onSurfaceVariant = Color(0xFF8B8B8E),
+    outline = Color(0xFF2A2A2A),
+    outlineVariant = Color(0xFF1F1F1F),
 )
 
 @Composable

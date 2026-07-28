@@ -19,12 +19,19 @@ import com.paolonata.shoppinglist.data.ShoppingItem
  * Costruisce e aggiorna la notifica persistente della lista della spesa: mostra gli articoli
  * ancora da comprare e permette di spuntarli con un tocco, senza aprire l'app né sbloccare
  * del tutto il telefono (se le notifiche sul lock screen sono attive nel sistema).
+ *
+ * Su lockscreen molti device mostrano solo il "collapsed view" del template standard
+ * (con setContentTitle + setContentText), non il custom RemoteViews: quindi il testo è
+ * pensato per essere significativo anche in quel caso.
  */
 object ShoppingListNotifier {
-    private const val CHANNEL_ID = "shopping_list_reminder"
+    // Nuovo channel ID (v2) per applicare IMPORTANCE_DEFAULT: i channel esistenti non si
+    // possono aggiornare, i loro settings sono immutabili post-creazione.
+    private const val CHANNEL_ID = "shopping_list_reminder_v2"
     private const val NOTIFICATION_ID = 42
     private const val COLLAPSED_MAX_ROWS = 3
     private const val EXPANDED_MAX_ROWS = 8
+    private const val BRAND_COLOR = 0xFFCCFF00.toInt()
 
     fun show(context: Context, items: List<ShoppingItem>) {
         if (!hasPostNotificationPermission(context)) return
@@ -33,6 +40,14 @@ object ShoppingListNotifier {
         val unchecked = items.filter { !it.isChecked }
         val total = items.size
         val checked = total - unchecked.size
+
+        // Testo per il collapsed view del template stock (visibile sul lockscreen)
+        val progressText = context.getString(R.string.notification_progress, checked, total)
+        val subtitle = when {
+            unchecked.isEmpty() -> context.getString(R.string.notification_all_done_body)
+            unchecked.size == 1 -> unchecked[0].displayName()
+            else -> context.getString(R.string.notification_todo_body, unchecked.size)
+        }
 
         val openAppIntent = PendingIntent.getActivity(
             context,
@@ -43,62 +58,64 @@ object ShoppingListNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.app_name))
-            .setContentText(context.getString(R.string.notification_progress, checked, total))
-            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(buildListView(context, unchecked, checked, total, COLLAPSED_MAX_ROWS))
-            .setCustomBigContentView(buildListView(context, unchecked, checked, total, EXPANDED_MAX_ROWS))
+            .setColor(BRAND_COLOR)
+            .setColorized(true)
+            .setContentTitle("$progressText · ${context.getString(R.string.app_short_name)}")
+            .setContentText(subtitle)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openAppIntent)
-            .build()
 
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        // Custom expanded view con righe cliccabili (visualizzato quando espansa)
+        if (unchecked.isNotEmpty()) {
+            builder.setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            builder.setCustomContentView(buildListView(context, unchecked, progressText, COLLAPSED_MAX_ROWS))
+            builder.setCustomBigContentView(buildListView(context, unchecked, progressText, EXPANDED_MAX_ROWS))
+        }
+
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
     }
 
     fun cancel(context: Context) {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+        // Puliamo anche il vecchio channel (se esisteva) per non lasciare rumore
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.getSystemService(NotificationManager::class.java)
+                ?.deleteNotificationChannel("shopping_list_reminder")
+        }
     }
+
+    private fun ShoppingItem.displayName(): String =
+        if (quantity > 1) "$name ×$quantity" else name
 
     private fun buildListView(
         context: Context,
         unchecked: List<ShoppingItem>,
-        checked: Int,
-        total: Int,
+        headerText: String,
         maxRows: Int,
     ): RemoteViews {
         val view = RemoteViews(context.packageName, R.layout.notification_list)
-        view.setTextViewText(
-            R.id.notif_header,
-            context.getString(R.string.notification_progress, checked, total),
-        )
-
-        // Reset del contenitore ad ogni build per non accumulare righe negli update
+        view.setTextViewText(R.id.notif_header, headerText)
         view.removeAllViews(R.id.notif_rows_container)
 
         unchecked.take(maxRows).forEach { item ->
             val row = RemoteViews(context.packageName, R.layout.notification_row)
-            val label = if (item.quantity > 1) "${item.name} ×${item.quantity}" else item.name
-            row.setTextViewText(R.id.notif_row_text, label)
+            row.setTextViewText(R.id.notif_row_text, item.displayName())
             row.setOnClickPendingIntent(R.id.notif_row_root, toggleItemPendingIntent(context, item.id))
             view.addView(R.id.notif_rows_container, row)
         }
 
         val extra = unchecked.size - maxRows
         if (extra > 0) {
-            view.setTextViewText(
-                R.id.notif_more,
-                context.getString(R.string.notification_more_items, extra),
-            )
+            view.setTextViewText(R.id.notif_more, context.getString(R.string.notification_more_items, extra))
             view.setViewVisibility(R.id.notif_more, android.view.View.VISIBLE)
         } else {
             view.setViewVisibility(R.id.notif_more, android.view.View.GONE)
         }
-
         return view
     }
 
@@ -122,10 +139,13 @@ object ShoppingListNotifier {
         val channel = NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.notification_channel_name),
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
             description = context.getString(R.string.notification_channel_description)
             setShowBadge(false)
+            enableLights(false)
+            enableVibration(false)
+            setSound(null, null)
             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         }
         manager.createNotificationChannel(channel)

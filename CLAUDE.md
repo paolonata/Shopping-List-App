@@ -190,9 +190,18 @@ dell'utente ("colori più neutri, moderna, chiaro e scuro curati"):
 - v2 "Todoist pulito" (commit `c080283`) → **troppo timido**.
 - v3 gradiente corallo→lampone ovunque, header hero → **"orrenda pillola colorata"** (troppo acceso).
 - v4 gradiente solo su FAB/empty state/conferma → **quasi giusto**.
-- v5 palette **zinc + indigo neutra** → **attuale**. Meno "shopping app aggressiva",
-  più "app di produttività moderna" (Notion/Linear/Cash App). Mantiene comunque
-  la personalità (accento indigo netto, non piatto grigio-grigio).
+- v5 palette **zinc + indigo neutra** → utente: "cambiato colori ma stile è quello, sembra 2015".
+- v6 **"Mercato 2026" (attuale)**: font **Space Grotesk** (distintivo,
+  Vercel/Stripe-like), palette bianco+nero puri con **accento lime elettrico
+  #CCFF00** (associazione "fresco"), tipografia scala Display grande, hero
+  header con **numero prominente "5/12 fatti"** invece di barra di progresso,
+  **checkbox quadrate arrotondate** (non cerchi) piene lime quando spuntate,
+  card con bordo netto invece di ombra, bottoni **pill grandi** (28dp radius)
+  con etichette brevi "Nuovo" / "Da WhatsApp". Icona rifatta coerente: quadrato
+  lime con checklist nera minimal.
+- La lezione: cambiare solo palette non basta, l'utente percepisce "stile 2015"
+  se il layout è quello convenzionale. Serve rinnovare **tipografia, forme,
+  hierarchy visuale**, non solo i colori.
 - **Font Open Sans**: `.ttf` statici (Regular/SemiBold/Bold/ExtraBold) scaricati
   da GitHub (`googlefonts/opensans`, cartella `fonts/ttf`) e **bundle** in
   `app/src/main/res/font/` (nomi lowercase con underscore). Applicato a TUTTA la

@@ -1,20 +1,21 @@
 <resources>
     <string name="app_name">Lista Spesa da WhatsApp</string>
 
-    <string name="home_title">Lista della spesa</string>
-    <string name="home_empty_title">La lista è vuota</string>
-    <string name="home_empty_body">Aggiungi gli articoli a mano, oppure copia un messaggio da WhatsApp e incollalo con il tasto +.</string>
-    <string name="home_add_manual">Aggiungi\nmanualmente</string>
-    <string name="home_add_whatsapp">Aggiungi\nda WhatsApp</string>
+    <string name="home_title">Spesa</string>
+    <string name="home_empty_title">Ancora nulla in lista.</string>
+    <string name="home_empty_body">Scrivi il primo articolo qui sotto, o incolla un messaggio da WhatsApp.</string>
+    <string name="home_add_manual">Nuovo</string>
+    <string name="home_add_whatsapp">Da WhatsApp</string>
     <string name="quick_add_hint">Scrivi un articolo…</string>
     <string name="share_title">Lista della spesa:</string>
     <string name="share_chooser">Condividi la lista</string>
-    <string name="home_menu_clear_checked">Rimuovi articoli spuntati</string>
-    <string name="home_menu_clear_all">Svuota tutta la lista</string>
-    <string name="home_section_to_buy">Da comprare</string>
-    <string name="home_section_in_cart">Nel carrello</string>
-    <string name="home_delete_item_cd">Elimina articolo</string>
-    <string name="home_progress">%1$d di %2$d nel carrello</string>
+    <string name="home_menu_clear_checked">Rimuovi quelli presi</string>
+    <string name="home_menu_clear_all">Svuota lista</string>
+    <string name="home_section_to_buy">Da prendere</string>
+    <string name="home_section_in_cart">Presi</string>
+    <string name="home_delete_item_cd">Elimina</string>
+    <string name="home_progress">%1$d / %2$d</string>
+    <string name="home_progress_label">fatti</string>
 
     <string name="add_title">Nuova lista</string>
     <string name="add_hint">Es: Acqua bambini, pollo pannato/nuggets, iogurt Danone, 2 pere, 2 mele…</string>
@@ -46,6 +47,9 @@
     <string name="notification_permission_denied">Per il promemoria serve il permesso di mostrare notifiche</string>
     <string name="notification_channel_name">Promemoria lista spesa</string>
     <string name="notification_channel_description">Notifica persistente con gli articoli ancora da comprare, spuntabili senza aprire l\'app</string>
-    <string name="notification_progress">%1$d di %2$d nel carrello</string>
-    <string name="notification_more_items">+%1$d altri articoli (apri l\'app per vederli)</string>
+    <string name="notification_progress">%1$d / %2$d</string>
+    <string name="notification_more_items">+%1$d altri articoli</string>
+    <string name="notification_all_done_body">Tutto preso 🎉</string>
+    <string name="notification_todo_body">%1$d ancora da prendere · trascina giù per spuntare</string>
+    <string name="app_short_name">Spesa</string>
 </resources>
