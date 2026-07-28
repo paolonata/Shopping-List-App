@@ -14,6 +14,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +69,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -90,7 +92,6 @@ import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.data.ShoppingItem
 import com.paolonata.shoppinglist.notification.NotificationPrefs
 import com.paolonata.shoppinglist.notification.ShoppingListNotifier
-import com.paolonata.shoppinglist.ui.theme.brandGradient
 
 @Composable
 fun HomeScreen(
@@ -109,12 +110,26 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val context = LocalContext.current
 
-    // Mantiene visibile la riga di aggiunta inline mentre si aggiungono articoli.
+    // Stato del drag & drop: ordine locale che sovrascrive l'ordine reale mentre trascini.
+    var localOrder by remember { mutableStateOf<List<Long>?>(null) }
+    var draggingId by remember { mutableStateOf<Long?>(null) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+    val itemHeights = remember { mutableStateMapOf<Long, Int>() }
+
+    LaunchedEffect(items) { if (draggingId == null) localOrder = null }
+
     LaunchedEffect(inlineAdding, items.size) {
         if (inlineAdding) {
             runCatching { listState.animateScrollToItem(items.size + 3) }
         }
     }
+
+    val allToBuy = items.filter { !it.isChecked }
+    val inCart = items.filter { it.isChecked }
+    val toBuy = localOrder?.let { order ->
+        val byId = allToBuy.associateBy { it.id }
+        order.mapNotNull { byId[it] } + allToBuy.filter { it.id !in order }
+    } ?: allToBuy
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -138,20 +153,32 @@ fun HomeScreen(
         if (items.isEmpty() && !inlineAdding) {
             EmptyState(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
-            val toBuy = items.filter { !it.isChecked }
-            val inCart = items.filter { it.isChecked }
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (toBuy.isNotEmpty()) {
-                    item { SectionHeader(stringResource(R.string.home_section_to_buy), toBuy.size) }
-                    item {
-                        ReorderableToBuySection(
-                            items = toBuy,
-                            editingItemId = editingItemId,
+                    item(key = "hdr_to_buy") {
+                        SectionHeader(stringResource(R.string.home_section_to_buy), toBuy.size)
+                    }
+                    items(toBuy, key = { it.id }) { shoppingItem ->
+                        val isDragging = draggingId == shoppingItem.id
+                        val elevation by animateFloatAsState(
+                            targetValue = if (isDragging) 12f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "elev",
+                        )
+                        val scale by animateFloatAsState(
+                            targetValue = if (isDragging) 1.03f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "scale",
+                        )
+                        ItemCard(
+                            item = shoppingItem,
+                            isEditing = editingItemId == shoppingItem.id,
+                            elevationDp = elevation.dp,
                             onToggleChecked = onToggleChecked,
                             onDeleteItem = onDeleteItem,
                             onStartEdit = { editingItemId = it },
@@ -160,12 +187,69 @@ fun HomeScreen(
                                 editingItemId = null
                             },
                             onCancelEdit = { editingItemId = null },
-                            onReorder = onReorderItems,
+                            dragHandle = {
+                                DragHandleIcon(
+                                    modifier = Modifier.pointerInput(shoppingItem.id) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = {
+                                                draggingId = shoppingItem.id
+                                                dragOffsetY = 0f
+                                                localOrder = toBuy.map { it.id }
+                                            },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragOffsetY += amount.y
+                                                val order = localOrder ?: return@detectDragGesturesAfterLongPress
+                                                val currentIndex = order.indexOf(shoppingItem.id)
+                                                val height = itemHeights[shoppingItem.id] ?: return@detectDragGesturesAfterLongPress
+                                                if (height == 0) return@detectDragGesturesAfterLongPress
+                                                if (dragOffsetY > height * 0.6f && currentIndex < order.lastIndex) {
+                                                    localOrder = order.toMutableList().apply {
+                                                        add(currentIndex + 1, removeAt(currentIndex))
+                                                    }
+                                                    dragOffsetY -= height
+                                                } else if (dragOffsetY < -height * 0.6f && currentIndex > 0) {
+                                                    localOrder = order.toMutableList().apply {
+                                                        add(currentIndex - 1, removeAt(currentIndex))
+                                                    }
+                                                    dragOffsetY += height
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                val finalOrder = localOrder
+                                                draggingId = null
+                                                dragOffsetY = 0f
+                                                if (finalOrder != null) {
+                                                    val byId = allToBuy.associateBy { it.id }
+                                                    val orderedItems = finalOrder.mapNotNull { byId[it] }
+                                                    onReorderItems(orderedItems)
+                                                }
+                                            },
+                                            onDragCancel = {
+                                                draggingId = null
+                                                dragOffsetY = 0f
+                                                localOrder = null
+                                            },
+                                        )
+                                    },
+                                )
+                            },
+                            modifier = Modifier
+                                .then(if (!isDragging) Modifier.animateItem() else Modifier)
+                                .onGloballyPositioned { coords -> itemHeights[shoppingItem.id] = coords.size.height }
+                                .zIndex(if (isDragging) 1f else 0f)
+                                .graphicsLayer {
+                                    translationY = if (isDragging) dragOffsetY else 0f
+                                    scaleX = scale
+                                    scaleY = scale
+                                },
                         )
                     }
                 }
                 if (inCart.isNotEmpty()) {
-                    item { SectionHeader(stringResource(R.string.home_section_in_cart), inCart.size) }
+                    item(key = "hdr_in_cart") {
+                        SectionHeader(stringResource(R.string.home_section_in_cart), inCart.size)
+                    }
                     items(inCart, key = { it.id }) { shoppingItem ->
                         ItemCard(
                             item = shoppingItem,
@@ -183,7 +267,7 @@ fun HomeScreen(
                     }
                 }
                 if (inlineAdding) {
-                    item {
+                    item(key = "inline_add") {
                         InlineAddRow(
                             onAdd = onAddItem,
                             onClose = { inlineAdding = false },
@@ -210,87 +294,15 @@ private fun shareList(context: Context, items: List<ShoppingItem>) {
 }
 
 @Composable
-private fun ReorderableToBuySection(
-    items: List<ShoppingItem>,
-    editingItemId: Long?,
-    onToggleChecked: (ShoppingItem) -> Unit,
-    onDeleteItem: (ShoppingItem) -> Unit,
-    onStartEdit: (Long) -> Unit,
-    onSaveEdit: (ShoppingItem, String, Int) -> Unit,
-    onCancelEdit: () -> Unit,
-    onReorder: (List<ShoppingItem>) -> Unit,
-) {
-    var localItems by remember { mutableStateOf(items) }
-    var draggingId by remember { mutableStateOf<Long?>(null) }
-    var dragOffsetY by remember { mutableStateOf(0f) }
-    val itemHeights = remember { mutableStateMapOf<Long, Int>() }
-
-    LaunchedEffect(items) {
-        if (draggingId == null) localItems = items
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        localItems.forEach { item ->
-            val isDragging = item.id == draggingId
-            ItemCard(
-                item = item,
-                isEditing = editingItemId == item.id,
-                onToggleChecked = onToggleChecked,
-                onDeleteItem = onDeleteItem,
-                onStartEdit = onStartEdit,
-                onSaveEdit = onSaveEdit,
-                onCancelEdit = onCancelEdit,
-                dragHandle = {
-                    Icon(
-                        imageVector = Icons.Default.DragHandle,
-                        contentDescription = stringResource(R.string.reorder_handle_cd),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(start = 2.dp)
-                            .size(22.dp)
-                            .pointerInput(item.id) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = { draggingId = item.id; dragOffsetY = 0f },
-                                    onDrag = { change, amount ->
-                                        change.consume()
-                                        dragOffsetY += amount.y
-                                        val currentIndex = localItems.indexOfFirst { it.id == item.id }
-                                        val height = itemHeights[item.id]
-                                        if (currentIndex < 0 || height == null || height == 0) {
-                                            return@detectDragGesturesAfterLongPress
-                                        }
-                                        if (dragOffsetY > height / 2 && currentIndex < localItems.lastIndex) {
-                                            localItems = localItems.toMutableList().apply {
-                                                add(currentIndex + 1, removeAt(currentIndex))
-                                            }
-                                            dragOffsetY -= height
-                                        } else if (dragOffsetY < -height / 2 && currentIndex > 0) {
-                                            localItems = localItems.toMutableList().apply {
-                                                add(currentIndex - 1, removeAt(currentIndex))
-                                            }
-                                            dragOffsetY += height
-                                        }
-                                    },
-                                    onDragEnd = {
-                                        draggingId = null
-                                        dragOffsetY = 0f
-                                        onReorder(localItems)
-                                    },
-                                    onDragCancel = {
-                                        draggingId = null
-                                        dragOffsetY = 0f
-                                    },
-                                )
-                            },
-                    )
-                },
-                modifier = Modifier
-                    .onGloballyPositioned { coords -> itemHeights[item.id] = coords.size.height }
-                    .zIndex(if (isDragging) 1f else 0f)
-                    .graphicsLayer { translationY = if (isDragging) dragOffsetY else 0f },
-            )
-        }
-    }
+private fun DragHandleIcon(modifier: Modifier = Modifier) {
+    Icon(
+        imageVector = Icons.Default.DragHandle,
+        contentDescription = stringResource(R.string.reorder_handle_cd),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .padding(start = 2.dp)
+            .size(22.dp),
+    )
 }
 
 @Composable
@@ -301,13 +313,13 @@ private fun BottomActions(onManual: () -> Unit, onFromWhatsApp: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        GradientActionButton(
+        OutlinedActionButton(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.Add,
             label = stringResource(R.string.home_add_manual),
             onClick = onManual,
         )
-        GradientActionButton(
+        FilledActionButton(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.ContentPaste,
             label = stringResource(R.string.home_add_whatsapp),
@@ -317,7 +329,7 @@ private fun BottomActions(onManual: () -> Unit, onFromWhatsApp: () -> Unit) {
 }
 
 @Composable
-private fun GradientActionButton(
+private fun FilledActionButton(
     modifier: Modifier,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
@@ -325,13 +337,33 @@ private fun GradientActionButton(
 ) {
     Box(
         modifier = modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(brandGradient())
+            .height(64.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.primary)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        ActionButtonContent(icon = icon, label = label, color = Color.White)
+        ActionButtonContent(icon = icon, label = label, color = MaterialTheme.colorScheme.onPrimary)
+    }
+}
+
+@Composable
+private fun OutlinedActionButton(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .height(64.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        ActionButtonContent(icon = icon, label = label, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -345,16 +377,16 @@ private fun ActionButtonContent(
         modifier = Modifier.padding(horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             color = color,
             maxLines = 2,
             textAlign = TextAlign.Center,
-            lineHeight = 16.sp,
+            lineHeight = 15.sp,
         )
     }
 }
@@ -372,6 +404,8 @@ private fun CleanHeader(
     val context = LocalContext.current
     var notifEnabled by remember { mutableStateOf(NotificationPrefs.isEnabled(context)) }
     val permissionDeniedMessage = stringResource(R.string.notification_permission_denied)
+    val notifOnMessage = stringResource(R.string.notification_enabled_toast)
+    val notifOffMessage = stringResource(R.string.notification_disabled_toast)
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -380,6 +414,7 @@ private fun CleanHeader(
             notifEnabled = true
             NotificationPrefs.setEnabled(context, true)
             ShoppingListNotifier.show(context, items)
+            Toast.makeText(context, notifOnMessage, Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(context, permissionDeniedMessage, Toast.LENGTH_LONG).show()
         }
@@ -390,6 +425,7 @@ private fun CleanHeader(
             notifEnabled = false
             NotificationPrefs.setEnabled(context, false)
             ShoppingListNotifier.cancel(context)
+            Toast.makeText(context, notifOffMessage, Toast.LENGTH_SHORT).show()
             return
         }
         val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -403,19 +439,20 @@ private fun CleanHeader(
             notifEnabled = true
             NotificationPrefs.setEnabled(context, true)
             ShoppingListNotifier.show(context, items)
+            Toast.makeText(context, notifOnMessage, Toast.LENGTH_LONG).show()
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
+            .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.home_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
@@ -445,9 +482,18 @@ private fun CleanHeader(
                                         Icons.Default.NotificationsNone
                                     },
                                     contentDescription = null,
+                                    tint = if (notifEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },
-                            text = { Text(stringResource(R.string.notification_menu_toggle)) },
+                            text = {
+                                Text(
+                                    text = if (notifEnabled) {
+                                        stringResource(R.string.notification_menu_toggle_off)
+                                    } else {
+                                        stringResource(R.string.notification_menu_toggle_on)
+                                    },
+                                )
+                            },
                             onClick = {
                                 menuExpanded = false
                                 toggleNotification()
@@ -466,13 +512,13 @@ private fun CleanHeader(
             }
         }
         if (total > 0) {
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.home_progress, checked, total),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             val fraction = if (total == 0) 0f else checked / total.toFloat()
             val animatedFraction by animateFloatAsState(
                 targetValue = fraction,
@@ -483,7 +529,7 @@ private fun CleanHeader(
                 progress = { animatedFraction },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
+                    .height(4.dp)
                     .clip(CircleShape),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -496,10 +542,10 @@ private fun CleanHeader(
 private fun SectionHeader(text: String, count: Int) {
     Text(
         text = "$text · $count",
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 2.dp),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp),
     )
 }
 
@@ -520,7 +566,7 @@ private fun QuantityStepper(quantity: Int, onChange: (Int) -> Unit) {
         Text(
             text = quantity.toString(),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.width(20.dp),
             textAlign = TextAlign.Center,
         )
@@ -549,11 +595,13 @@ private fun ItemCard(
     onCancelEdit: () -> Unit,
     modifier: Modifier = Modifier,
     dragHandle: (@Composable () -> Unit)? = null,
+    elevationDp: androidx.compose.ui.unit.Dp = 1.dp,
 ) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
+        shadowElevation = elevationDp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.fillMaxWidth(),
     ) {
         if (isEditing) {
@@ -588,7 +636,7 @@ private fun ItemCard(
                     modifier = Modifier
                         .clip(CircleShape)
                         .clickable { onToggleChecked(item) }
-                        .size(26.dp)
+                        .size(24.dp)
                         .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
                 )
                 Spacer(modifier = Modifier.width(14.dp))
@@ -634,7 +682,7 @@ private fun ItemCard(
                         .clip(CircleShape)
                         .clickable { onDeleteItem(item) }
                         .padding(4.dp)
-                        .size(18.dp),
+                        .size(16.dp),
                 )
             }
         }
@@ -661,7 +709,7 @@ private fun EditItemRow(item: ShoppingItem, onSave: (String, Int) -> Unit, onCan
             imageVector = if (item.isChecked) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
             contentDescription = null,
             tint = if (item.isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(26.dp),
+            modifier = Modifier.size(24.dp),
         )
         Spacer(modifier = Modifier.width(14.dp))
         BasicTextField(
@@ -702,14 +750,14 @@ private fun QuantityPill(quantity: Int) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+            .background(MaterialTheme.colorScheme.primaryContainer)
             .padding(horizontal = 10.dp, vertical = 3.dp),
     ) {
         Text(
             text = "×$quantity",
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }
@@ -723,23 +771,23 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(96.dp)
+                    .size(88.dp)
                     .clip(CircleShape)
-                    .background(brandGradient()),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(44.dp),
                 )
             }
             Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = stringResource(R.string.home_empty_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
             )
@@ -773,9 +821,9 @@ private fun InlineAddRow(onAdd: (String) -> Unit, onClose: () -> Unit) {
     }
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -786,7 +834,7 @@ private fun InlineAddRow(onAdd: (String) -> Unit, onClose: () -> Unit) {
                 imageVector = Icons.Outlined.RadioButtonUnchecked,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(14.dp))
             BasicTextField(

@@ -13,15 +13,19 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.paolonata.shoppinglist.R
 
-// Look vibrante e moderno: gradiente caldo corallo -> rosso lampone come firma
-// del brand, usato con parsimonia (FAB, empty state, pulsante di conferma).
-val BrandGradientStart = Color(0xFFFF6A5E)
-val BrandGradientEnd = Color(0xFFF5325B)
+// Palette moderna e neutra ispirata a Notion/Linear: neutri "zinc" (grigi puri, non caldi
+// né freddi) con un accento indigo elegante. Sostituisce il rosso corallo di brand.
+private val AccentLight = Color(0xFF4F46E5) // indigo-600
+private val AccentDark = Color(0xFF818CF8)  // indigo-400 (più chiaro sul fondo scuro)
 
-fun brandGradient(): Brush = Brush.horizontalGradient(listOf(BrandGradientStart, BrandGradientEnd))
+/**
+ * Un gradiente più discreto sul viola-indigo, usato solo su elementi decorativi
+ * (empty state). Non più sui bottoni: preferiamo tinte piene per una lettura più netta.
+ */
+fun brandGradient(): Brush = Brush.linearGradient(
+    listOf(Color(0xFF6366F1), Color(0xFF4F46E5)),
+)
 
-// Font Open Sans (bundle in res/font). Open Sans non ha uno static "Medium":
-// la richiesta di peso Medium usa il Regular (mappatura esplicita, deterministica).
 private val OpenSans = FontFamily(
     Font(R.font.opensans_regular, FontWeight.Normal),
     Font(R.font.opensans_regular, FontWeight.Medium),
@@ -52,35 +56,38 @@ private val AppTypography: Typography
         )
     }
 
-// Sfondi caldi (carta) invece del grigio Android di default.
 private val LightColors = lightColorScheme(
-    primary = Color(0xFFF5325B),
+    primary = AccentLight,
     onPrimary = Color(0xFFFFFFFF),
-    secondary = Color(0xFFFF6A5E),
+    primaryContainer = Color(0xFFE0E7FF), // indigo-100
+    onPrimaryContainer = Color(0xFF312E81), // indigo-900
+    secondary = Color(0xFF52525B), // zinc-600
     onSecondary = Color(0xFFFFFFFF),
-    background = Color(0xFFFBF7F4),
-    onBackground = Color(0xFF201A18),
+    background = Color(0xFFFAFAFA), // zinc-50
+    onBackground = Color(0xFF18181B), // zinc-900
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF201A18),
-    surfaceVariant = Color(0xFFF3ECE7),
-    onSurfaceVariant = Color(0xFF8A807A),
-    outline = Color(0xFFD4C9C2),
-    outlineVariant = Color(0xFFEBE2DC),
+    onSurface = Color(0xFF18181B),
+    surfaceVariant = Color(0xFFF4F4F5), // zinc-100
+    onSurfaceVariant = Color(0xFF71717A), // zinc-500
+    outline = Color(0xFFE4E4E7), // zinc-200
+    outlineVariant = Color(0xFFF4F4F5), // zinc-100
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFFF7286),
-    onPrimary = Color(0xFF2A0710),
-    secondary = Color(0xFFFF8A7E),
-    onSecondary = Color(0xFF2A0710),
-    background = Color(0xFF16130F),
-    onBackground = Color(0xFFEDE7E3),
-    surface = Color(0xFF221E1B),
-    onSurface = Color(0xFFEDE7E3),
-    surfaceVariant = Color(0xFF2C2723),
-    onSurfaceVariant = Color(0xFFA79E97),
-    outline = Color(0xFF544D47),
-    outlineVariant = Color(0xFF322C28),
+    primary = AccentDark,
+    onPrimary = Color(0xFF1E1B4B), // indigo-950
+    primaryContainer = Color(0xFF3730A3), // indigo-800
+    onPrimaryContainer = Color(0xFFE0E7FF),
+    secondary = Color(0xFFA1A1AA), // zinc-400
+    onSecondary = Color(0xFF18181B),
+    background = Color(0xFF09090B), // zinc-950
+    onBackground = Color(0xFFFAFAFA),
+    surface = Color(0xFF18181B), // zinc-900
+    onSurface = Color(0xFFFAFAFA),
+    surfaceVariant = Color(0xFF27272A), // zinc-800
+    onSurfaceVariant = Color(0xFFA1A1AA),
+    outline = Color(0xFF3F3F46), // zinc-700
+    outlineVariant = Color(0xFF27272A),
 )
 
 @Composable

@@ -52,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,7 +59,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.parser.ParsedItem
-import com.paolonata.shoppinglist.ui.theme.brandGradient
 
 private fun previewKey(item: ParsedItem): String = "${item.name.trim().lowercase()}|${item.note.orEmpty()}"
 
@@ -282,26 +280,23 @@ private fun PreviewCard(item: ParsedItem, onQuantityChange: (Int) -> Unit) {
 
 @Composable
 private fun ConfirmButton(enabled: Boolean, label: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    val background = if (enabled) {
-        Modifier.background(brandGradient())
-    } else {
-        Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
-    }
+    val shape = RoundedCornerShape(14.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(54.dp)
+            .height(52.dp)
             .clip(shape)
-            .then(background)
+            .background(
+                if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            )
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

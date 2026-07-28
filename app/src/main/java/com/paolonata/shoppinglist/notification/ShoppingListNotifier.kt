@@ -23,7 +23,8 @@ import com.paolonata.shoppinglist.data.ShoppingItem
 object ShoppingListNotifier {
     private const val CHANNEL_ID = "shopping_list_reminder"
     private const val NOTIFICATION_ID = 42
-    private const val MAX_ROWS = 6
+    private const val COLLAPSED_MAX_ROWS = 3
+    private const val EXPANDED_MAX_ROWS = 8
 
     fun show(context: Context, items: List<ShoppingItem>) {
         if (!hasPostNotificationPermission(context)) return
@@ -32,29 +33,6 @@ object ShoppingListNotifier {
         val unchecked = items.filter { !it.isChecked }
         val total = items.size
         val checked = total - unchecked.size
-
-        val contentView = RemoteViews(context.packageName, R.layout.notification_list)
-        contentView.setTextViewText(
-            R.id.notif_header,
-            context.getString(R.string.notification_progress, checked, total),
-        )
-
-        unchecked.take(MAX_ROWS).forEach { item ->
-            val row = RemoteViews(context.packageName, R.layout.notification_row)
-            val label = if (item.quantity > 1) "${item.name} ×${item.quantity}" else item.name
-            row.setTextViewText(R.id.notif_row_text, label)
-            row.setOnClickPendingIntent(R.id.notif_row_root, toggleItemPendingIntent(context, item.id))
-            contentView.addView(R.id.notif_rows_container, row)
-        }
-
-        val extra = unchecked.size - MAX_ROWS
-        if (extra > 0) {
-            contentView.setTextViewText(
-                R.id.notif_more,
-                context.getString(R.string.notification_more_items, extra),
-            )
-            contentView.setViewVisibility(R.id.notif_more, android.view.View.VISIBLE)
-        }
 
         val openAppIntent = PendingIntent.getActivity(
             context,
@@ -70,7 +48,8 @@ object ShoppingListNotifier {
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(context.getString(R.string.notification_progress, checked, total))
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomBigContentView(contentView)
+            .setCustomContentView(buildListView(context, unchecked, checked, total, COLLAPSED_MAX_ROWS))
+            .setCustomBigContentView(buildListView(context, unchecked, checked, total, EXPANDED_MAX_ROWS))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -83,6 +62,44 @@ object ShoppingListNotifier {
 
     fun cancel(context: Context) {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+    }
+
+    private fun buildListView(
+        context: Context,
+        unchecked: List<ShoppingItem>,
+        checked: Int,
+        total: Int,
+        maxRows: Int,
+    ): RemoteViews {
+        val view = RemoteViews(context.packageName, R.layout.notification_list)
+        view.setTextViewText(
+            R.id.notif_header,
+            context.getString(R.string.notification_progress, checked, total),
+        )
+
+        // Reset del contenitore ad ogni build per non accumulare righe negli update
+        view.removeAllViews(R.id.notif_rows_container)
+
+        unchecked.take(maxRows).forEach { item ->
+            val row = RemoteViews(context.packageName, R.layout.notification_row)
+            val label = if (item.quantity > 1) "${item.name} ×${item.quantity}" else item.name
+            row.setTextViewText(R.id.notif_row_text, label)
+            row.setOnClickPendingIntent(R.id.notif_row_root, toggleItemPendingIntent(context, item.id))
+            view.addView(R.id.notif_rows_container, row)
+        }
+
+        val extra = unchecked.size - maxRows
+        if (extra > 0) {
+            view.setTextViewText(
+                R.id.notif_more,
+                context.getString(R.string.notification_more_items, extra),
+            )
+            view.setViewVisibility(R.id.notif_more, android.view.View.VISIBLE)
+        } else {
+            view.setViewVisibility(R.id.notif_more, android.view.View.GONE)
+        }
+
+        return view
     }
 
     private fun toggleItemPendingIntent(context: Context, itemId: Long): PendingIntent {
@@ -108,6 +125,8 @@ object ShoppingListNotifier {
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
             description = context.getString(R.string.notification_channel_description)
+            setShowBadge(false)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         }
         manager.createNotificationChannel(channel)
     }

@@ -78,16 +78,19 @@ Progetto Gradle multi-modulo (Kotlin, version catalog in `gradle/libs.versions.t
   (`EditItemRow`): campo nome + stepper quantità + ✓/✗. Funziona sia in "Da
   comprare" sia in "Nel carrello". `Repository.updateItemDetails` (ignora nomi
   vuoti) + `ViewModel.updateItem`.
-- **Riordino con drag & drop**: solo nella sezione "Da comprare" (i comprati non
-  si riordinano). Icona "maniglia" (`Icons.Default.DragHandle`) a fianco di ogni
-  articolo: `detectDragGesturesAfterLongPress` + calcolo manuale dello scambio
-  in base all'altezza della card (misurata con `onGloballyPositioned`), niente
-  libreria esterna (non verificabile in sandbox). Implementato con una `Column`
-  semplice dentro un singolo `item { }` della `LazyColumn` esterna (non con
-  `items()` lazy), per tenere la logica di drag disaccoppiata dalla
-  virtualizzazione. Al rilascio, `onReorder` passa la lista riordinata a
-  `Repository.reorderItems`, che riassegna `position` (0..N-1) in una
-  transazione (`@Transaction` su un metodo default del DAO).
+- **Riordino con drag & drop (fluido)**: solo nella sezione "Da comprare".
+  Maniglia (`Icons.Default.DragHandle`) con `detectDragGesturesAfterLongPress`;
+  al posto della Column non-lazy della prima versione, gli item sono ora
+  espansi come `items(...)` diretti nella `LazyColumn` madre con
+  `key = { it.id }` e `Modifier.animateItem()` — così quando l'ordine cambia
+  durante il drag, gli altri articoli **scivolano con animazione fluida**
+  (prima "saltavano" da una posizione all'altra). L'articolo trascinato ha
+  `translationY` = offset del dito + scala 1.03 + shadow 12dp animate con
+  spring per feedback tattile. Al rilascio, `onReorder` passa la lista
+  riordinata a `Repository.reorderItems`, che riassegna `position` (0..N-1) in
+  una transazione (`@Transaction` su un metodo default del DAO). Il threshold
+  di scambio è 0.6 * height dell'item (invece di 0.5) per rendere lo scambio
+  più prevedibile e meno "nervoso".
 
 ### Input vocale (dettatura)
 `AddFromTextScreen` ha un pulsante **🎤 Detta** che usa il riconoscimento
@@ -103,6 +106,22 @@ on-device (APK enorme, build nativa non testabile in locale) e STT cloud
 (chiave API + privacy).
 
 ### Notifica persistente ("lista senza sbloccare il telefono")
+
+**Nota importante sull'esperienza reale**: l'utente ha segnalato che "non
+funziona / non capisco cosa devo fare". Ci sono due possibili cause:
+1. **Non ha attivato il toggle** dal menu ⋮ → "Attiva promemoria in notifica"
+   (aggiunto Toast di conferma quando l'attiva/disattiva, per feedback esplicito).
+2. **Il produttore del telefono** (Xiaomi/MIUI/HyperOS in particolare) blocca di
+   default le notifiche del lock screen per app installate fuori dal Play Store,
+   e/o blocca i background broadcast delle app "non frequenti". In quel caso
+   serve autorizzare a mano: Impostazioni → App → Lista Spesa → Notifiche →
+   Blocco schermo (per farla vedere sul lock screen); e Batteria → No limiti
+   (per far arrivare i tap sul BroadcastReceiver). NON è aggirabile via
+   Manifest — è un layer specifico del vendor sopra Android.
+
+Il Toast di attivazione già ricorda: "Se non lo vedi a schermo bloccato,
+autorizza le notifiche di questa app nelle impostazioni del telefono."
+
 L'utente voleva vedere/spuntare la lista senza sbloccare il telefono. **Vincolo
 reale di Android**: dopo Android 5 non esistono più i widget sulla schermata di
 blocco (a differenza di iOS) — non è una limitazione dell'app. Chiarito con
@@ -148,25 +167,32 @@ la `Row` dell'header.
 
 ## 3. Stile / design
 
-Look **vibrante e moderno** (l'utente ha bocciato la prima versione bianca/rossa
-piatta come "sciapa"):
-- **Gradiente di brand** corallo→lampone `#FF6A5E → #F5325B` (in
-  `theme/Theme.kt`, esposto da `brandGradient()`), usato **con parsimonia**:
-  solo su **FAB**, empty state e pulsante di conferma. Primary vibrante
-  `#F5325B` (dark: `#FF7286`). **Niente dynamic color**.
-- **Header piatto** (NON a gradiente): l'utente ha bocciato il primo header
-  "hero" a gradiente come "orrenda pillola colorata" (troppo acceso in dark).
-  Ora è titolo su sfondo normale (`onBackground`), testo "X di Y nel carrello"
-  in grigio e `LinearProgressIndicator` sottile in `primary` come unico accento.
-  Lezione: vivacità nei piccoli accenti (FAB, pill, spunte, header di sezione),
-  non in grandi blocchi colorati.
-- Articoli come **card arrotondate** (`Surface` shape 16dp + `shadowElevation`)
-  su sfondo grigio chiaro, con spaziatura; niente più righe piatte con divider.
-- Checkbox **circolari**: `Icons.Outlined.RadioButtonUnchecked` →
-  `Icons.Filled.CheckCircle` (primary). Quantità in **pill** colorata
-  (primary @12% alpha). FAB rotondo a gradiente con ombra.
-- Storia: prima versione Todoist "pulita" (commit `c080283`) giudicata troppo
-  timida → restyle vibrante con gradiente.
+**Palette attuale (zinc + indigo, "premium neutrale")**: rifatto su richiesta
+dell'utente ("colori più neutri, moderna, chiaro e scuro curati"):
+- Neutri: famiglia **zinc** (grigi puri, non caldi né freddi, tipo Notion/Linear).
+  Light: bg `#FAFAFA`, surface bianca, outline `#E4E4E7`, testo `#18181B`.
+  Dark: bg `#09090B`, surface `#18181B`, outline `#3F3F46`, testo `#FAFAFA`.
+- Accento: **indigo** (`#4F46E5` light, `#818CF8` dark), con `primaryContainer`
+  usato per le pill delle quantità e il cerchio dell'empty state.
+- **Niente gradiente rosso corallo/lampone** sui bottoni: preferiti tinte piene.
+  La funzione `brandGradient()` esiste ancora ma non è più usata dalla UI (può
+  restare per future decorazioni).
+- **Bottoni azione in basso**: uno **outlined** ("Aggiungi manualmente") e uno
+  **filled indigo** ("Aggiungi da WhatsApp"). Sostituiscono i due bottoni a
+  gradiente identici (che confondevano quale fosse l'azione primaria).
+- **Card articoli**: `Surface` 14dp shape + bordo sottile (1dp `outlineVariant`)
+  + `shadowElevation` piccola. Più raffinato e piatto della versione precedente.
+- **Header**: piatto (titolo bold, sottotitolo grigio, progress bar 4dp sottile).
+  Le icone Share e MoreVert usano `onSurfaceVariant`.
+
+### Storia del design (per capire i gusti dell'utente)
+- v1 "bianco/rosso piatto" → **"sciapo"**.
+- v2 "Todoist pulito" (commit `c080283`) → **troppo timido**.
+- v3 gradiente corallo→lampone ovunque, header hero → **"orrenda pillola colorata"** (troppo acceso).
+- v4 gradiente solo su FAB/empty state/conferma → **quasi giusto**.
+- v5 palette **zinc + indigo neutra** → **attuale**. Meno "shopping app aggressiva",
+  più "app di produttività moderna" (Notion/Linear/Cash App). Mantiene comunque
+  la personalità (accento indigo netto, non piatto grigio-grigio).
 - **Font Open Sans**: `.ttf` statici (Regular/SemiBold/Bold/ExtraBold) scaricati
   da GitHub (`googlefonts/opensans`, cartella `fonts/ttf`) e **bundle** in
   `app/src/main/res/font/` (nomi lowercase con underscore). Applicato a TUTTA la
@@ -261,8 +287,10 @@ Problemi incontrati e soluzioni, **in ordine** (utile per non ripeterli):
 - `bb9f869` — prima build verde (app base funzionante).
 - `c080283` — restyle "Todoist pulito" (poi giudicato troppo timido/"sciapo").
 - `d7cd568` — dettatura vocale + restyle vibrante (gradiente, card, FAB).
-- `1a5b77e` — header piatto: rimossa la "pillola" a gradiente in alto, troppo
-  accesa in dark; gradiente tenuto solo su FAB/empty state/pulsante conferma.
+- `1a5b77e` — header piatto: rimossa la "pillola" a gradiente in alto.
+- `8d37c6b` — quantità stepper, modifica inline, riordino drag, notifica persistente.
+- palette zinc + indigo (attuale) — restyle "premium neutrale" + riordino fluido
+  con `Modifier.animateItem()` + toast conferma notifica.
 
 Andamento del design (utile per capire i gusti dell'utente): piatto bianco/rosso
 = "sciapo" → Todoist pulito = ancora timido → gradiente ovunque/header hero =

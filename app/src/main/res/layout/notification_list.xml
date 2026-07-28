@@ -10,11 +10,11 @@
         android:layout_height="wrap_content"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingTop="4dp"
+        android:paddingTop="6dp"
         android:paddingBottom="4dp"
-        android:textStyle="bold"
-        android:textSize="13sp"
-        android:textColor="#8A000000" />
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textStyle="bold" />
 
     <LinearLayout
         android:id="@+id/notif_rows_container"
@@ -28,10 +28,10 @@
         android:layout_height="wrap_content"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingTop="2dp"
+        android:paddingTop="4dp"
         android:paddingBottom="8dp"
-        android:textSize="12sp"
-        android:textColor="#8A000000"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="?android:attr/textColorSecondary"
         android:visibility="gone" />
 
 </LinearLayout>
