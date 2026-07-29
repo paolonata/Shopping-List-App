@@ -176,6 +176,30 @@ percepito "a sinistra"/scollegato dall'icona. Fix: avvolgere **solo**
 per l'ancoraggio dei popup), invece di lasciarli come semplici fratelli dentro
 la `Row` dell'header.
 
+### Barra "aggiungi al carrello" in basso — usabilità (evoluzione)
+- Placeholder cambiato da "Scrivi un articolo…" a **"Aggiungi al carrello"** (più
+  chiaro sull'azione), stringa `quick_add_hint`.
+- **Problema**: quando la tastiera si apre (aggiunta manuale), l'articolo appena
+  aggiunto finiva nascosto sotto la tastiera senza scorrimento automatico.
+  Primo fix: `LaunchedEffect(items.size)` con `listState.animateScrollToItem(...)`
+  che scorreva sempre in cima all'ultimo elemento di "Da prendere" ad ogni
+  aggiunta (commit `adc908e`).
+- **Feedback successivo**: "sposta un po' verso l'alto la pillola" (poco margine
+  dal bordo/tastiera) e "non vedo più la lista di 'Presi'" (lo scroll forzato ad
+  ogni aggiunta spingeva via la sezione "Presi", e ripartiva ad ogni nuovo
+  articolo scavalcando eventuali scroll manuali dell'utente verso "Presi").
+  - **Fix margine**: padding inferiore della `BottomQuickAddBar` aumentato
+    (`bottom = 22.dp` invece di `10.dp` uniforme) per più respiro sopra la
+    tastiera/bordo schermo.
+  - **Fix scroll**: sostituito lo scroll forzato con **`BringIntoViewRequester`**
+    per-articolo (uno per ogni item di "Da prendere", tenuto in una
+    `mutableStateMapOf<Long, BringIntoViewRequester>`). Un `LaunchedEffect(toBuy)`
+    calcola il **diff degli id** rispetto al giro precedente (non solo la
+    dimensione) e chiama `requestBringIntoView()` solo sul nuovo articolo, con lo
+    **scroll minimo necessario** invece di un salto forzato in cima — se
+    l'articolo è già (anche solo parzialmente) visibile non scorre affatto,
+    lasciando "Presi" dov'è.
+
 ## 3. Stile / design
 
 **Palette attuale (zinc + indigo, "premium neutrale")**: rifatto su richiesta

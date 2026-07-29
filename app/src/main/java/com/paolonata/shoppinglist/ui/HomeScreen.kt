@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -58,6 +60,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -123,15 +126,24 @@ fun HomeScreen(
         order.mapNotNull { byId[it] } + allToBuy.filter { it.id !in order }
     } ?: allToBuy
 
-    // Quando la lista cresce (nuovo articolo aggiunto, da qui o da WhatsApp), porta in vista
-    // l'ultimo elemento di "Da prendere": senza questo, un articolo aggiunto mentre la
-    // tastiera è aperta finisce in fondo alla lista, nascosto sotto la tastiera.
-    var previousTotal by remember { mutableStateOf(items.size) }
-    LaunchedEffect(items.size) {
-        if (items.size > previousTotal && toBuy.isNotEmpty()) {
-            runCatching { listState.animateScrollToItem(toBuy.size) }
+    // Quando arriva un nuovo articolo (da qui o da WhatsApp) lo si porta in vista con lo
+    // scroll minimo necessario (BringIntoViewRequester), non un salto forzato in cima:
+    // così, se l'utente aveva scorso per vedere "Presi", non viene sbalzato via da lì
+    // se il nuovo articolo è già almeno parzialmente visibile.
+    val bringIntoViewRequesters = remember { mutableStateMapOf<Long, BringIntoViewRequester>() }
+    var previousToBuyIds by remember { mutableStateOf<Set<Long>>(toBuy.map { it.id }.toSet()) }
+    LaunchedEffect(toBuy) {
+        val currentIds = toBuy.map { it.id }.toSet()
+        val newIds = currentIds - previousToBuyIds
+        if (newIds.isNotEmpty()) {
+            val lastNewItem = toBuy.lastOrNull { it.id in newIds }
+            lastNewItem?.let { item ->
+                bringIntoViewRequesters[item.id]?.let { requester ->
+                    runCatching { requester.bringIntoView() }
+                }
+            }
         }
-        previousTotal = items.size
+        previousToBuyIds = currentIds
     }
 
     Scaffold(
@@ -172,6 +184,11 @@ fun HomeScreen(
                         )
                     }
                     items(toBuy, key = { it.id }) { shoppingItem ->
+                        val bringIntoViewRequester = remember(shoppingItem.id) { BringIntoViewRequester() }
+                        DisposableEffect(shoppingItem.id) {
+                            bringIntoViewRequesters[shoppingItem.id] = bringIntoViewRequester
+                            onDispose { bringIntoViewRequesters.remove(shoppingItem.id) }
+                        }
                         val isDragging = draggingId == shoppingItem.id
                         val scale by animateFloatAsState(
                             targetValue = if (isDragging) 1.02f else 1f,
@@ -233,6 +250,7 @@ fun HomeScreen(
                                 )
                             },
                             modifier = Modifier
+                                .bringIntoViewRequester(bringIntoViewRequester)
                                 .then(if (!isDragging) Modifier.animateItem() else Modifier)
                                 .onGloballyPositioned { c -> itemHeights[shoppingItem.id] = c.size.height }
                                 .zIndex(if (isDragging) 1f else 0f)
@@ -538,7 +556,7 @@ private fun BottomQuickAddBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 22.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onFromWhatsApp) {
