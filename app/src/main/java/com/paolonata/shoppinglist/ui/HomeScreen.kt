@@ -13,7 +13,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,14 +51,15 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -90,8 +91,6 @@ import com.paolonata.shoppinglist.notification.NotificationPrefs
 import com.paolonata.shoppinglist.notification.ShoppingListNotifier
 import com.paolonata.shoppinglist.ui.theme.ThemeMode
 import com.paolonata.shoppinglist.ui.theme.ThemePrefs
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.runtime.collectAsState
 
 @Composable
 fun HomeScreen(
@@ -105,10 +104,10 @@ fun HomeScreen(
     onClearChecked: () -> Unit,
     onClearAll: () -> Unit,
 ) {
-    var inlineAdding by remember { mutableStateOf(false) }
     var editingItemId by remember { mutableStateOf<Long?>(null) }
     val listState = rememberLazyListState()
     val context = LocalContext.current
+    val quickAddFocusRequester = remember { FocusRequester() }
 
     var localOrder by remember { mutableStateOf<List<Long>?>(null) }
     var draggingId by remember { mutableStateOf<Long?>(null) }
@@ -116,9 +115,6 @@ fun HomeScreen(
     val itemHeights = remember { mutableStateMapOf<Long, Int>() }
 
     LaunchedEffect(items) { if (draggingId == null) localOrder = null }
-    LaunchedEffect(inlineAdding, items.size) {
-        if (inlineAdding) runCatching { listState.animateScrollToItem(items.size + 3) }
-    }
 
     val allToBuy = items.filter { !it.isChecked }
     val inCart = items.filter { it.isChecked }
@@ -130,7 +126,7 @@ fun HomeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            HeroHeader(
+            MinimalHeader(
                 total = items.size,
                 checked = items.count { it.isChecked },
                 onShare = { shareList(context, items) },
@@ -140,29 +136,34 @@ fun HomeScreen(
             )
         },
         bottomBar = {
-            BottomActionsPill(
-                onManual = { inlineAdding = true },
+            BottomQuickAddBar(
+                onAdd = onAddItem,
                 onFromWhatsApp = onAddFromText,
+                focusRequester = quickAddFocusRequester,
             )
         },
     ) { padding ->
-        if (items.isEmpty() && !inlineAdding) {
+        if (items.isEmpty()) {
             EmptyState(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 12.dp),
             ) {
                 if (toBuy.isNotEmpty()) {
                     item(key = "hdr_to_buy") {
-                        MinimalSectionHeader(stringResource(R.string.home_section_to_buy), toBuy.size)
+                        MinimalSectionHeader(
+                            text = stringResource(R.string.home_section_to_buy),
+                            count = toBuy.size,
+                            showAdd = true,
+                            onAddClick = { runCatching { quickAddFocusRequester.requestFocus() } },
+                        )
                     }
                     items(toBuy, key = { it.id }) { shoppingItem ->
                         val isDragging = draggingId == shoppingItem.id
                         val scale by animateFloatAsState(
-                            targetValue = if (isDragging) 1.04f else 1f,
+                            targetValue = if (isDragging) 1.02f else 1f,
                             animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                             label = "scale",
                         )
@@ -253,11 +254,6 @@ fun HomeScreen(
                         )
                     }
                 }
-                if (inlineAdding) {
-                    item(key = "inline_add") {
-                        InlineAddRow(onAdd = onAddItem, onClose = { inlineAdding = false })
-                    }
-                }
             }
         }
     }
@@ -277,8 +273,9 @@ private fun shareList(context: Context, items: List<ShoppingItem>) {
     context.startActivity(Intent.createChooser(send, context.getString(R.string.share_chooser)))
 }
 
+/** Header minimale ed editoriale: titolo piccolo centrato, icone senza sfondo colorato. */
 @Composable
-private fun HeroHeader(
+private fun MinimalHeader(
     total: Int,
     checked: Int,
     onShare: () -> Unit,
@@ -331,24 +328,29 @@ private fun HeroHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 20.dp, bottom = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.home_title),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f),
-            )
+        Box(modifier = Modifier.fillMaxWidth().height(40.dp)) {
             if (total > 0) {
-                IconChipButton(icon = Icons.Default.IosShare, onClick = onShare)
-                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(onClick = onShare, modifier = Modifier.align(Alignment.CenterStart)) {
+                    Icon(
+                        Icons.Default.IosShare,
+                        contentDescription = stringResource(R.string.share_chooser),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
-            Box {
-                IconChipButton(icon = Icons.Default.MoreHoriz, onClick = { menuExpanded = true })
+            Text(
+                text = stringResource(R.string.home_title).uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center),
+            )
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                OutlinedIconButton(icon = Icons.Default.MoreHoriz, onClick = { menuExpanded = true })
                 val themeMode by ThemePrefs.mode.collectAsState()
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    // Tema — sempre disponibile
                     DropdownMenuItem(
                         leadingIcon = {
                             Icon(
@@ -377,7 +379,6 @@ private fun HeroHeader(
                         onSelect = { ThemePrefs.set(context, ThemeMode.DARK); menuExpanded = false },
                     )
                     HorizontalDivider()
-                    // Notifica — sempre disponibile
                     DropdownMenuItem(
                         leadingIcon = {
                             Icon(
@@ -393,7 +394,6 @@ private fun HeroHeader(
                         },
                         onClick = { menuExpanded = false; toggleNotification() },
                     )
-                    // Clear — solo se ci sono articoli
                     if (total > 0) {
                         HorizontalDivider()
                         DropdownMenuItem(
@@ -409,32 +409,26 @@ private fun HeroHeader(
             }
         }
         if (total > 0) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = stringResource(R.string.home_progress, checked, total),
-                    style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.home_progress_label),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 10.dp),
-                )
-            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.home_progress, checked, total) + " " + stringResource(R.string.home_progress_label),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
 
+/** Icona in un cerchio con bordo sottile — usata per l'unica azione "con contorno" dell'header. */
 @Composable
-private fun IconChipButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+private fun OutlinedIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(36.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -442,7 +436,7 @@ private fun IconChipButton(icon: androidx.compose.ui.graphics.vector.ImageVector
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -454,11 +448,7 @@ private fun ThemeRadioItem(label: String, selected: Boolean, onSelect: () -> Uni
             Icon(
                 imageVector = if (selected) Icons.Default.Check else Icons.Default.Close,
                 contentDescription = null,
-                tint = if (selected) {
-                    MaterialTheme.colorScheme.onBackground
-                } else {
-                    androidx.compose.ui.graphics.Color.Transparent
-                },
+                tint = if (selected) MaterialTheme.colorScheme.onBackground else Color.Transparent,
                 modifier = Modifier.size(18.dp),
             )
         },
@@ -473,135 +463,148 @@ private fun ThemeRadioItem(label: String, selected: Boolean, onSelect: () -> Uni
 }
 
 @Composable
-private fun MinimalSectionHeader(text: String, count: Int) {
+private fun MinimalSectionHeader(
+    text: String,
+    count: Int,
+    showAdd: Boolean = false,
+    onAddClick: () -> Unit = {},
+) {
     Row(
-        modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = text.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold,
+            text = text,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
         )
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = count.toString(),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(modifier = Modifier.weight(1f))
+        if (showAdd) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onAddClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
     }
 }
 
+/** Barra fissa in basso: icona per importare da WhatsApp + campo di testo sempre pronto
+ * per aggiungere un articolo a mano (nessun pulsante vistoso, in linea con lo stile). */
 @Composable
-private fun BottomActionsPill(onManual: () -> Unit, onFromWhatsApp: () -> Unit) {
+private fun BottomQuickAddBar(
+    onAdd: (String) -> Unit,
+    onFromWhatsApp: () -> Unit,
+    focusRequester: FocusRequester,
+) {
+    var value by remember { mutableStateOf("") }
+
+    fun submit() {
+        val trimmed = value.trim()
+        if (trimmed.isNotEmpty()) {
+            onAdd(trimmed)
+            value = ""
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // Azione primaria: sinistra ampia con accento lime
-        PrimaryPillButton(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Default.Add,
-            label = stringResource(R.string.home_add_manual),
-            onClick = onManual,
-        )
-        // Secondaria: fondo neutro/bordo netto
-        SecondaryPillButton(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Default.ContentPaste,
-            label = stringResource(R.string.home_add_whatsapp),
-            onClick = onFromWhatsApp,
-        )
-    }
-}
-
-@Composable
-private fun PrimaryPillButton(
-    modifier: Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .height(56.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.primary)
-            .clickable(onClick = onClick),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimary,
-        )
+        IconButton(onClick = onFromWhatsApp) {
+            Icon(
+                imageVector = Icons.Default.ContentPaste,
+                contentDescription = stringResource(R.string.home_add_whatsapp),
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 18.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.quick_add_hint),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+            )
+        }
     }
 }
 
+/** Checkbox circolare: contorno vuoto quando da prendere, piena (onBackground) con
+ * spunta quando presa — coerente con l'estetica "checklist" editoriale monocromatica. */
 @Composable
-private fun SecondaryPillButton(
-    modifier: Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .height(56.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.5.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(28.dp))
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-    }
-}
-
-/** Checkbox quadrata arrotondata: quando spuntata diventa piena lime con la spunta nera. */
-@Composable
-private fun SquareCheckbox(
+private fun CircleCheckbox(
     isChecked: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bgColor by animateColorAsState(
-        targetValue = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        targetValue = if (isChecked) MaterialTheme.colorScheme.onBackground else Color.Transparent,
         animationSpec = tween(180),
         label = "cbBg",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+        targetValue = if (isChecked) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.outline,
         animationSpec = tween(180),
         label = "cbBorder",
     )
     val scale by animateFloatAsState(
-        targetValue = if (isChecked) 1.08f else 1f,
+        targetValue = if (isChecked) 1.06f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "cbScale",
     )
     Box(
         modifier = modifier
-            .size(26.dp)
+            .size(24.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(8.dp))
+            .clip(CircleShape)
             .background(bgColor)
-            .border(1.5.dp, borderColor, RoundedCornerShape(8.dp))
+            .border(1.5.dp, borderColor, CircleShape)
             .clickable(onClick = onToggle),
         contentAlignment = Alignment.Center,
     ) {
@@ -609,8 +612,8 @@ private fun SquareCheckbox(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.background,
+                modifier = Modifier.size(15.dp),
             )
         }
     }
@@ -624,7 +627,7 @@ private fun DragHandleIcon(modifier: Modifier = Modifier) {
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
             .padding(start = 4.dp, end = 2.dp)
-            .size(22.dp),
+            .size(20.dp),
     )
 }
 
@@ -670,19 +673,7 @@ private fun ItemRow(
     modifier: Modifier = Modifier,
     dragHandle: (@Composable () -> Unit)? = null,
 ) {
-    val elevation by animateFloatAsState(
-        targetValue = if (isDragging) 12f else 0f,
-        animationSpec = spring(),
-        label = "elev",
-    )
-
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        shadowElevation = elevation.dp,
-        modifier = modifier.fillMaxWidth(),
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         if (isEditing) {
             EditItemRow(
                 item = item,
@@ -691,25 +682,28 @@ private fun ItemRow(
             )
         } else {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+                    .clickable { onStartEdit(item.id) }
+                    .padding(horizontal = 4.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SquareCheckbox(isChecked = item.isChecked, onToggle = { onToggleChecked(item) })
+                CircleCheckbox(
+                    isChecked = item.isChecked,
+                    onToggle = { onToggleChecked(item) },
+                )
                 Spacer(modifier = Modifier.width(14.dp))
                 val textColor by animateColorAsState(
                     targetValue = if (item.isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     animationSpec = tween(200),
                     label = "textColor",
                 )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onStartEdit(item.id) },
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyLarge,
                         textDecoration = if (item.isChecked) TextDecoration.LineThrough else null,
                         color = textColor,
                     )
@@ -722,7 +716,7 @@ private fun ItemRow(
                     }
                 }
                 if (item.quantity > 1) {
-                    QuantityBadge(item.quantity, dimmed = item.isChecked)
+                    QuantityPillOutline(item.quantity)
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 dragHandle?.invoke()
@@ -738,24 +732,26 @@ private fun ItemRow(
                 )
             }
         }
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            thickness = 1.dp,
+            modifier = Modifier.padding(start = 42.dp),
+        )
     }
 }
 
 @Composable
-private fun QuantityBadge(quantity: Int, dimmed: Boolean = false) {
-    val bg = if (dimmed) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.onBackground
-    val fg = if (dimmed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.background
+private fun QuantityPillOutline(quantity: Int) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(bg)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .clip(RoundedCornerShape(50))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 3.dp),
     ) {
         Text(
             text = "×$quantity",
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = fg,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -773,16 +769,16 @@ private fun EditItemRow(item: ShoppingItem, onSave: (String, Int) -> Unit, onCan
     }
 
     Row(
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SquareCheckbox(isChecked = item.isChecked, onToggle = {})
+        CircleCheckbox(isChecked = item.isChecked, onToggle = {})
         Spacer(modifier = Modifier.width(14.dp))
         BasicTextField(
             value = name,
             onValueChange = { name = it },
             singleLine = true,
-            textStyle = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
@@ -816,23 +812,11 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Blob lime con carrellino testuale
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "🛒",
-                    style = MaterialTheme.typography.displayMedium,
-                )
-            }
-            Spacer(modifier = Modifier.height(24.dp))
+            Text(text = "🛒", style = MaterialTheme.typography.displayMedium)
+            Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = stringResource(R.string.home_empty_title),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
@@ -843,73 +827,6 @@ private fun EmptyState(modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
-        }
-    }
-}
-
-@Composable
-private fun InlineAddRow(onAdd: (String) -> Unit, onClose: () -> Unit) {
-    var value by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf(1) }
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
-
-    fun submit() {
-        val trimmed = value.trim()
-        if (trimmed.isNotEmpty()) {
-            onAdd(if (quantity > 1) "$quantity $trimmed" else trimmed)
-            value = ""
-            quantity = 1
-        } else {
-            onClose()
-        }
-    }
-
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.onBackground),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SquareCheckbox(isChecked = false, onToggle = {})
-            Spacer(modifier = Modifier.width(14.dp))
-            BasicTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(onDone = { submit() }),
-                modifier = Modifier.weight(1f).focusRequester(focusRequester),
-                decorationBox = { innerTextField ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (value.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.quick_add_hint),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-            )
-            QuantityStepper(quantity = quantity) { quantity = it.coerceAtLeast(1) }
-            IconButton(onClick = { submit() }) {
-                Icon(
-                    imageVector = if (value.isBlank()) Icons.Default.Close else Icons.Default.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-            }
         }
     }
 }

@@ -17,16 +17,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.paolonata.shoppinglist.R
 
-// Palette bianco/nero + accento lime elettrico. Mantiene un'identità distintiva su
-// entrambi i temi. In dark il fondo è quasi nero puro.
-private val AccentLight = Color(0xFFCCFF00)
-private val AccentDark = Color(0xFFCCFF00)
-private val OnAccent = Color(0xFF0A0A0A)
+// Palette editoriale monocromatica (bianco/nero/grigio), ispirata a to-do app minimali
+// (Things/TickTick): niente colore acceso, il contrasto stesso è l'accento. "primary"
+// coincide con onBackground/onto quindi checkbox, pulsanti e bordi diventano neri su
+// sfondo chiaro e bianchi su sfondo scuro senza dover ritintare ogni componente a mano.
+private val InkLight = Color(0xFF0A0A0A)
+private val InkDark = Color(0xFFFAFAFA)
 
-fun brandGradient(): Brush = Brush.linearGradient(listOf(AccentLight, AccentLight))
+fun brandGradient(): Brush = Brush.linearGradient(listOf(InkLight, InkLight))
 
-// Plus Jakarta Sans: font geometrico moderno e morbido (Linear/Notion-like), meno
-// "tabellone sportivo" di Space Grotesk. Ha tutti i pesi di cui abbiamo bisogno.
+// Plus Jakarta Sans: font geometrico moderno e morbido (Linear/Notion-like).
 private val Jakarta = FontFamily(
     Font(R.font.jakarta_regular, FontWeight.Normal),
     Font(R.font.jakarta_medium, FontWeight.Medium),
@@ -35,57 +35,58 @@ private val Jakarta = FontFamily(
     Font(R.font.jakarta_extrabold, FontWeight.ExtraBold),
 )
 
-// Tipografia con display grande per il conteggio hero, e testo readable per i body.
+// Tipografia editoriale, meno "poster" della versione precedente: niente tracking
+// negativo aggressivo, pesi più regolari per un look da app di produttività pulita.
 private val AppTypography: Typography = Typography(
-    displayLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 57.sp, letterSpacing = (-1.5).sp),
-    displayMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 45.sp, letterSpacing = (-1).sp),
-    displaySmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, letterSpacing = (-0.6).sp),
-    headlineLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 32.sp, letterSpacing = (-0.5).sp),
-    headlineMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 28.sp, letterSpacing = (-0.4).sp),
-    headlineSmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 24.sp, letterSpacing = (-0.3).sp),
-    titleLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-    titleMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
-    titleSmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
+    displayLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 50.sp),
+    displayMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 40.sp),
+    displaySmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 32.sp),
+    headlineLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 28.sp),
+    headlineMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 25.sp),
+    headlineSmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 22.sp),
+    titleLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 20.sp),
+    titleMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Medium, fontSize = 16.sp),
+    titleSmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Medium, fontSize = 14.sp),
     bodyLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 16.sp),
     bodyMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 14.sp),
     bodySmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 12.sp),
-    labelLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, letterSpacing = 0.1.sp),
-    labelMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 0.5.sp),
-    labelSmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, letterSpacing = 0.6.sp),
+    labelLarge = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, letterSpacing = 0.6.sp),
+    labelMedium = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 0.4.sp),
+    labelSmall = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.5.sp),
 )
 
 private val LightColors = lightColorScheme(
-    primary = AccentLight,
-    onPrimary = OnAccent,
-    primaryContainer = AccentLight,
-    onPrimaryContainer = OnAccent,
-    secondary = Color(0xFF0A0A0A),
+    primary = InkLight,
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFECECEC),
+    onPrimaryContainer = InkLight,
+    secondary = InkLight,
     onSecondary = Color(0xFFFFFFFF),
-    background = Color(0xFFFAFAFA),
-    onBackground = Color(0xFF0A0A0A),
+    background = Color(0xFFFFFFFF),
+    onBackground = InkLight,
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF0A0A0A),
-    surfaceVariant = Color(0xFFF4F4F5),
-    onSurfaceVariant = Color(0xFF71717A),
-    outline = Color(0xFFE4E4E7),
-    outlineVariant = Color(0xFFF4F4F5),
+    onSurface = InkLight,
+    surfaceVariant = Color(0xFFF5F5F5),
+    onSurfaceVariant = Color(0xFF8A8A8E),
+    outline = Color(0xFFE2E2E5),
+    outlineVariant = Color(0xFFEFEFEF),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = AccentDark,
-    onPrimary = OnAccent,
-    primaryContainer = AccentDark,
-    onPrimaryContainer = OnAccent,
-    secondary = Color(0xFFFAFAFA),
+    primary = InkDark,
+    onPrimary = Color(0xFF0A0A0A),
+    primaryContainer = Color(0xFF232323),
+    onPrimaryContainer = InkDark,
+    secondary = InkDark,
     onSecondary = Color(0xFF0A0A0A),
     background = Color(0xFF0A0A0A),
-    onBackground = Color(0xFFFAFAFA),
-    surface = Color(0xFF151515),
-    onSurface = Color(0xFFFAFAFA),
-    surfaceVariant = Color(0xFF1F1F1F),
-    onSurfaceVariant = Color(0xFF8B8B8E),
-    outline = Color(0xFF2A2A2A),
-    outlineVariant = Color(0xFF1F1F1F),
+    onBackground = InkDark,
+    surface = Color(0xFF0A0A0A),
+    onSurface = InkDark,
+    surfaceVariant = Color(0xFF1C1C1E),
+    onSurfaceVariant = Color(0xFF8A8A8E),
+    outline = Color(0xFF2C2C2E),
+    outlineVariant = Color(0xFF1C1C1E),
 )
 
 @Composable

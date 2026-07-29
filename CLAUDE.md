@@ -213,6 +213,45 @@ dell'utente ("colori più neutri, moderna, chiaro e scuro curati"):
 - La lezione: cambiare solo palette non basta, l'utente percepisce "stile 2015"
   se il layout è quello convenzionale. Serve rinnovare **tipografia, forme,
   hierarchy visuale**, non solo i colori.
+- v7 **"Editoriale monocromatico" (attuale)**: l'utente ha mandato uno screenshot
+  di riferimento (to-do app minimale stile Things/TickTick: bianco/nero puri,
+  header piccolo centrato in maiuscolo, righe piatte senza card, checkbox
+  circolari, pillole outline per i badge, barra in basso con icona + campo di
+  testo pillola invece di bottoni pieni). Ricreato fedelmente:
+  - **Palette monocromatica**: `primary` = `onBackground` (nero in light, bianco
+    in dark) invece di un colore acceso — il contrasto stesso è l'accento.
+    Niente più lime. `brandGradient()` resta ma ora è nero/nero (placeholder,
+    quasi inutilizzato).
+  - **Header minimale**: `Box` con icone allineate ai bordi (`Alignment.CenterStart/
+    CenterEnd`) e titolo centrato in maiuscolo piccolo (`labelLarge`), non più
+    il grande hero. Icona Share **senza sfondo**, icona menu "..." in un
+    **cerchio con bordo sottile** (`OutlinedIconButton`) — replica esatta dei
+    due stili diversi di icona nello screenshot di riferimento.
+  - **Checkbox circolari** (`CircleCheckbox`, non più quadrate): vuota outline
+    quando da prendere, piena `onBackground` con spunta `background` quando presa.
+  - **Righe piatte**: niente più `Surface`/card/bordo/ombra per articolo; solo
+    `Row` + `HorizontalDivider` sottile (`outlineVariant`, indentato dopo la
+    checkbox) tra un articolo e l'altro, per la resa "lista pulita" del
+    riferimento.
+  - **Pillole quantità outline** (`QuantityPillOutline`): bordo sottile, niente
+    riempimento colorato, come i badge orario "3:30 PM" nel riferimento.
+  - **Bottoni sotto → barra "quick add" fissa**: eliminati i due pulsanti pieni
+    ("Aggiungi manualmente"/"Aggiungi da WhatsApp"). Ora `BottomQuickAddBar`:
+    icona clipboard (senza sfondo) a sinistra per l'import WhatsApp + un
+    **campo di testo sempre pronto** in stile pillola (`surfaceVariant`,
+    arrotondato) a destra, sempre visibile (anche a lista vuota, essendo nello
+    `Scaffold.bottomBar`) — replica il pattern "home icon + pill input" del
+    riferimento, mappando le due azioni esistenti senza perderle. Il testo
+    digitato passa comunque nel parser (`onAddItem` → `addItemsFromText`), quindi
+    "2 mele" continua a dare quantità 2 anche da qui.
+  - **"+" per sezione**: la sezione "Da prendere" ha un piccolo "+" a destra
+    dell'header che porta il focus (tastiera) sul campo di aggiunta rapida in
+    basso, via `FocusRequester` condiviso — echeggia il "+" per sezione dello
+    screenshot senza duplicare l'input.
+  - Rimossi: `InlineAddRow` (pop-up/riga inline separata, sostituita dalla barra
+    fissa), `SquareCheckbox`/`QuantityBadge` (rinominati/ristilizzati).
+  - `AddFromTextScreen`: stessa coerenza — checkbox placeholder ora cerchio,
+    `PreviewCard` da card bordata a riga piatta + divider.
 - **Font Open Sans**: `.ttf` statici (Regular/SemiBold/Bold/ExtraBold) scaricati
   da GitHub (`googlefonts/opensans`, cartella `fonts/ttf`) e **bundle** in
   `app/src/main/res/font/` (nomi lowercase con underscore). Applicato a TUTTA la
