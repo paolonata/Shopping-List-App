@@ -252,6 +252,15 @@ dell'utente ("colori più neutri, moderna, chiaro e scuro curati"):
     fissa), `SquareCheckbox`/`QuantityBadge` (rinominati/ristilizzati).
   - `AddFromTextScreen`: stessa coerenza — checkbox placeholder ora cerchio,
     `PreviewCard` da card bordata a riga piatta + divider.
+  - **Fix di usabilità post-feedback**: placeholder "Scrivi un articolo…" →
+    "Aggiungi al carrello" (più chiaro); riaggiunto lo **stepper quantità**
+    dentro la pillola di `BottomQuickAddBar` (appare solo quando il campo non
+    è vuoto, per non affollare la barra a riposo); aggiunto **scroll
+    automatico** quando `items.size` cresce (`LaunchedEffect(items.size)` con
+    confronto al totale precedente) verso l'ultimo elemento di "Da prendere" —
+    altrimenti un articolo aggiunto con la tastiera aperta finiva in fondo
+    alla lista, nascosto sotto la tastiera, e serviva chiudere la tastiera per
+    vederlo.
 - **Font Open Sans**: `.ttf` statici (Regular/SemiBold/Bold/ExtraBold) scaricati
   da GitHub (`googlefonts/opensans`, cartella `fonts/ttf`) e **bundle** in
   `app/src/main/res/font/` (nomi lowercase con underscore). Applicato a TUTTA la

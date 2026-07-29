@@ -123,6 +123,17 @@ fun HomeScreen(
         order.mapNotNull { byId[it] } + allToBuy.filter { it.id !in order }
     } ?: allToBuy
 
+    // Quando la lista cresce (nuovo articolo aggiunto, da qui o da WhatsApp), porta in vista
+    // l'ultimo elemento di "Da prendere": senza questo, un articolo aggiunto mentre la
+    // tastiera è aperta finisce in fondo alla lista, nascosto sotto la tastiera.
+    var previousTotal by remember { mutableStateOf(items.size) }
+    LaunchedEffect(items.size) {
+        if (items.size > previousTotal && toBuy.isNotEmpty()) {
+            runCatching { listState.animateScrollToItem(toBuy.size) }
+        }
+        previousTotal = items.size
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -505,7 +516,7 @@ private fun MinimalSectionHeader(
 }
 
 /** Barra fissa in basso: icona per importare da WhatsApp + campo di testo sempre pronto
- * per aggiungere un articolo a mano (nessun pulsante vistoso, in linea con lo stile). */
+ * per aggiungere un articolo a mano, con stepper per la quantità mentre si scrive. */
 @Composable
 private fun BottomQuickAddBar(
     onAdd: (String) -> Unit,
@@ -513,12 +524,14 @@ private fun BottomQuickAddBar(
     focusRequester: FocusRequester,
 ) {
     var value by remember { mutableStateOf("") }
+    var quantity by remember { mutableStateOf(1) }
 
     fun submit() {
         val trimmed = value.trim()
         if (trimmed.isNotEmpty()) {
-            onAdd(trimmed)
+            onAdd(if (quantity > 1) "$quantity $trimmed" else trimmed)
             value = ""
+            quantity = 1
         }
     }
 
@@ -537,14 +550,14 @@ private fun BottomQuickAddBar(
             )
         }
         Spacer(modifier = Modifier.width(6.dp))
-        Box(
+        Row(
             modifier = Modifier
                 .weight(1f)
                 .height(48.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 18.dp),
-            contentAlignment = Alignment.CenterStart,
+                .padding(start = 18.dp, end = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicTextField(
                 value = value,
@@ -557,7 +570,7 @@ private fun BottomQuickAddBar(
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
                 decorationBox = { innerTextField ->
                     Box(contentAlignment = Alignment.CenterStart) {
                         if (value.isEmpty()) {
@@ -571,6 +584,17 @@ private fun BottomQuickAddBar(
                     }
                 },
             )
+            if (value.isNotBlank()) {
+                QuantityStepper(quantity = quantity) { quantity = it.coerceAtLeast(1) }
+                IconButton(onClick = { submit() }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = stringResource(R.string.edit_confirm_cd),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
         }
     }
 }

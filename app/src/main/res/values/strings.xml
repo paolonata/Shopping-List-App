@@ -6,7 +6,7 @@
     <string name="home_empty_body">Scrivi il primo articolo qui sotto, o incolla un messaggio da WhatsApp.</string>
     <string name="home_add_manual">Nuovo</string>
     <string name="home_add_whatsapp">Da WhatsApp</string>
-    <string name="quick_add_hint">Scrivi un articolo…</string>
+    <string name="quick_add_hint">Aggiungi al carrello</string>
     <string name="share_title">Lista della spesa:</string>
     <string name="share_chooser">Condividi la lista</string>
     <string name="home_menu_clear_checked">Rimuovi quelli presi</string>
