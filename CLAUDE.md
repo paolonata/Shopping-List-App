@@ -199,6 +199,21 @@ la `Row` dell'header.
     **scroll minimo necessario** invece di un salto forzato in cima — se
     l'articolo è già (anche solo parzialmente) visibile non scorre affatto,
     lasciando "Presi" dov'è.
+  - **Causa vera del bug persistente** (screenshot: barra di aggiunta
+    completamente sparita dietro la tastiera, "come se fosse tutto un blocco
+    unico"): l'`<activity>` in `AndroidManifest.xml` non dichiarava
+    `android:windowSoftInputMode`, quindi Android sceglieva da solo il
+    comportamento — su alcuni dispositivi/OEM usava **pan** (sposta l'intera
+    UI in blocco quando si apre la tastiera) invece di **resize**
+    (ridimensiona l'area disponibile così la barra fissa in basso resta
+    sempre sopra la tastiera). Con "pan" la posizione della barra rispetto
+    alla tastiera diventava incoerente. **Fix**: aggiunto
+    `android:windowSoftInputMode="adjustResize"` sull'activity — non è un
+    problema di Compose/layout, ma di configurazione della finestra a
+    livello di sistema. Nota per il futuro: nessun opt-in a edge-to-edge
+    (`WindowCompat.setDecorFitsSystemWindows`) è stato aggiunto, quindi
+    `adjustResize` resta il meccanismo attivo; se in futuro si passa a
+    edge-to-edge bisognerà sostituirlo con `Modifier.imePadding()` espliciti.
 
 ## 3. Stile / design
 
