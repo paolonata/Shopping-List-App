@@ -453,3 +453,157 @@ vivaci piccoli (FAB, spunte, pill quantità, barra avanzamento, header sezione).
   usare `ScheduleWakeup`; il minimo è **~60s** (non si scende a 30s). Ricordarsi
   di fermare il loop (`stop:true`) a build verde.
 - Firma i commit come da istruzioni di sessione (Co-Authored-By + Claude-Session).
+
+## 8. Audit di bug completo e fix (l'utente ha chiesto "fixali tutto")
+
+Un agente dedicato (general-purpose, effort alto) ha fatto un audit statico
+dell'intero codebase (nessun SDK/emulatore disponibile qui, quindi analisi del
+codice + esecuzione reale dei test del parser, non test manuale sull'app) e ha
+trovato 28 problemi. Tutti tranne un paio (vedi "Deliberatamente non fatto" più
+sotto) sono stati sistemati nello stesso giro. Riferimento per il futuro:
+
+### Critici
+- **Tasto Indietro chiudeva l'app dalla schermata di import**: nessun
+  `BackHandler`. Fix: `BackHandler(enabled = screen is Screen.AddFromText) {
+  screen = Screen.Home }` in `MainActivity.kt`.
+- **Parser: una parentesi non chiusa o un'emoticon `:(` collassava tutto il
+  messaggio in un solo articolo** (`depth` in `splitOnTopLevelCommas` non
+  tornava mai a 0). Fix: se le parentesi in una riga non sono bilanciate,
+  fallback a uno split naive su tutte le virgole per quella riga.
+
+### Medi
+- **Scroll automatico verso il nuovo articolo non funzionava con liste più
+  lunghe dello schermo** (il `BringIntoViewRequester` esiste solo per gli item
+  già composti/visibili). Fix: fallback su
+  `listState.animateScrollToItem(indice)` quando non c'è un requester
+  registrato per l'articolo nuovo.
+- **Rotazione schermo**: riapriva la schermata di import perdendo le modifiche
+  (l'intent `ACTION_SEND` veniva riprocessato ad ogni `onCreate`). Fix:
+  `handleShareIntent` solo se `savedInstanceState == null`; `screen` ora è
+  `rememberSaveable` (con un `Saver` custom, dato che `Screen` non è
+  Parcelable).
+- **`addParsedItems` senza transazione**: due aggiunte quasi simultanee
+  potevano creare righe duplicate invece di sommare le quantità. Fix: la
+  logica di merge/insert è ora un metodo di default `@Transaction` su
+  `ShoppingItemDao` (`addParsedItemsTransactional`), non più nel Repository —
+  serve perché `@Transaction` funziona solo su metodi del DAO. Gestisce anche
+  i duplicati **nello stesso batch** (es. "pere (bio), 2 pere" ora si
+  uniscono in una riga sola, non solo i duplicati già in DB).
+- **Barra di aggiunta rapida**: la quantità dello stepper veniva concatenata
+  al testo prima di ri-parsare ("2 mele" + stepper 3 → testo "3 2 mele" →
+  nome sbagliato). Fix: `onAdd(text, quantity)` separati; la quantità si
+  applica al `ParsedItem` solo se lo stepper è stato toccato (>1), altrimenti
+  vince quella scritta nel testo.
+- **Virgola decimale italiana** ("1,5 etti") veniva interpretata come
+  separatore. Fix: `splitOnTopLevelCommas` non spezza più su una virgola tra
+  due cifre.
+- **"Lost update"**: `toggleChecked`/`reorderItems`/`updateItemDetails`
+  usavano `@Update` sull'intera riga con uno snapshot vecchio della UI,
+  quindi due azioni concorrenti (es. spunta da notifica + fine di un drag)
+  potevano annullarsi a vicenda. Fix: query mirate a un solo campo
+  (`setChecked`, `updateNameAndQuantity`, `setPosition`/`updatePositions`) in
+  `ShoppingItemDao`.
+- **Notifica persistente**: non sopravviveva a un riavvio del telefono, e con
+  lista vuota restava bloccata (non scartabile, `setOngoing(true)` senza
+  righe). Fix: nuovo `ShoppingListBootReceiver` (`BOOT_COMPLETED`, richiede
+  `RECEIVE_BOOT_COMPLETED`) che riposta la notifica se il flag era attivo;
+  `ShoppingListNotifier.show()` chiama `cancel()` se `items.isEmpty()` e
+  disattiva il flag se il permesso è stato revocato dall'utente.
+- **Quantità 0** (es. "0 pere") veniva salvata così com'è. Fix:
+  `coerceAtLeast(1)` nel parser.
+- **Drag & drop**: la soglia di scambio usava sempre l'altezza dell'articolo
+  trascinato, non quella del vicino (diverso se ha una nota su più righe) →
+  disallineamento con articoli di altezza diversa. **Non risolto in questo
+  giro** (richiede misurare anche il vicino, rimandato: rischio/complessità
+  non giustificati per un glitch visivo minore, non una corruzione dati).
+
+### Minori (tutti risolti salvo dove indicato)
+- Quantità dello stepper non si azzerava se il testo veniva cancellato a mano
+  (non con invio/✓) → restava appesa al prossimo articolo. Fix in
+  `BottomQuickAddBar`.
+- `quantityOverrides` in `AddFromTextScreen` non veniva mai ripulita →
+  quantità "fantasma" se si riscriveva lo stesso nome. Fix: `LaunchedEffect`
+  che rimuove le chiavi non più presenti nel testo ricalcolato.
+- Righe duplicate nello stesso batch di import con note diverse (es. "pere
+  (bio), 2 pere") → risolto insieme al fix della transazione (vedi sopra).
+- Collisioni di `position` quando un articolo viene ri-de-spuntato. Fix:
+  `toggleChecked` assegna una nuova posizione (max+1) quando si toglie la
+  spunta, invece di lasciare quella vecchia.
+- "Incolla" sovrascriveva il testo in silenzio, mentre "Detta" lo accodava —
+  incoerente. Fix: anche "Incolla" ora accoda.
+- Chiave di preview (`previewKey`) usava `"|"` come separatore, teoricamente
+  collidibile se un nome contenesse quel carattere. Fix: separatore
+  ` ` (non digitabile da tastiera).
+- Nessuna protezione da doppio tap sul pulsante di conferma import (la
+  schermata resta composta/toccabile durante il `Crossfade`). Fix: guardia
+  `confirmed` in `AddFromTextScreen`.
+- `itemHeights`/`bringIntoViewRequesters` in `HomeScreen` non venivano mai
+  ripulite alla cancellazione di un articolo (piccola perdita di memoria).
+  Fix: `DisposableEffect` che rimuove entrambe le voci.
+- `onReorderItems` catturato per closure dentro `pointerInput` senza
+  `rememberUpdatedState` (stesso schema del bug già noto su `toBuy`/
+  `allToBuy`, oggi innocuo ma fragile). Fix: avvolto anche lui.
+- Un tap breve sulla maniglia di drag "cadeva" sul `clickable` di tutta la
+  riga e apriva la modifica per errore (il gesto di drag intercetta solo
+  long-press, non i tap normali). Fix: il click "modifica" è ora solo sulla
+  colonna nome/nota, non su tutta la riga.
+- Toast/contatori mostravano `items.size` (articoli interpretati) invece del
+  conteggio effettivo. Fix: `addParsedItemsTransactional` ritorna il numero
+  di articoli davvero applicati (esclusi quelli con nome vuoto).
+- Nessuna stringa usava `<plurals>` ("Anteprima (1 articoli)" ecc). Fix:
+  nuovo `res/values/plurals.xml` per `add_preview_title`,
+  `add_confirm_button`, `add_items_added_toast`, `notification_more_items`;
+  in Compose via `pluralStringResource`, fuori Compose via
+  `resources.getQuantityString`.
+- Condivisione includeva anche gli articoli già presi. Fix: `shareList` ora
+  filtra solo quelli da comprare.
+- Area di tocco del pulsante elimina troppo piccola (~26dp) e icone senza
+  `contentDescription` (menu "···", "+" di sezione). Fix: padding aumentato
+  a 10dp (~34dp, non ancora ai 48dp raccomandati — vedi sotto) + content
+  description aggiunte (`settings_menu_cd`, `section_add_item_cd`).
+- Codice/risorse morte: `checkedCount` (ViewModel, mai usato), import
+  `Arrangement` non usato, stringhe `home_add_manual`,
+  `add_remove_preview_item_cd`, `add_quantity_note`, `edit_item_cd`,
+  `notification_progress`, `app_short_name`, e i layout/drawable della
+  vecchia notifica RemoteViews (`notification_list.xml`,
+  `notification_row.xml`, `ic_notif_row_unchecked.xml`). Tutti rimossi.
+- Parser: marcatori di enfasi (`*_~`) rimossi ovunque invece che solo ai
+  bordi (`"pasta_barilla"` → `"Pastabarilla"`). Fix: rimossi solo se non
+  fiancheggiati da caratteri alfanumerici su entrambi i lati. Più parentesi
+  nello stesso token: solo la prima diventava nota, le altre sparivano dal
+  nome. Fix: tutte le parentesi (non annidate) diventano note unite con "; ".
+  Numero troppo grande per un `Int` veniva comunque tolto dal nome. Fix:
+  se `toIntOrNull()` fallisce, il testo resta intatto.
+- `versionCode` non era mai stato incrementato. Bump a `2` /
+  `versionName "1.1"` con questo giro di fix; **da incrementare ad ogni
+  release successiva**.
+- `ShoppingListDatabase` senza `fallbackToDestructiveMigration()`: la prima
+  modifica di schema futura avrebbe fatto crashare l'app all'avvio sui
+  telefoni con dati esistenti. Aggiunta preventivamente (i dati locali non
+  sono critici, nessun backend).
+- Colore della notifica (`BRAND_COLOR`) era ancora il lime della vecchia
+  palette "Mercato 2026". Aggiornato al nero coerente con la palette attuale.
+
+### Deliberatamente non fatto (rischio/complessità non giustificati)
+- **Parentesi annidate** (`"pane (integrale (bio))"`) lasciano ancora residui
+  nel nome: servirebbe un parser a scansione manuale del bilanciamento delle
+  parentesi invece della regex `\(([^()]*)\)`, più rischioso da scrivere alla
+  cieca senza poter compilare/testare l'app in locale. Caso raro.
+  L'assorbimento di unità di misura ("1 kg di pane" → nome "Kg di pane" invece
+  di "Pane") non è stato affrontato per lo stesso motivo: è più una feature
+  mancante (riconoscimento unità + parola di raccordo "di") che un bug, con
+  margine concreto di rompere altri casi validi se fatto in fretta.
+- **Titlecase con emoji iniziale** (`"🥛 latte"` resta minuscolo): cosmetico,
+  bassissimo impatto.
+- **Soglia di drag & drop basata sull'altezza del vicino** (non di quella
+  dell'articolo trascinato): vedi sopra, glitch visivo minore.
+- **Area di tocco del pulsante elimina non portata fino a 48dp** (fermata a
+  ~34dp): andare oltre avrebbe richiesto ridisegnare gli spazi della riga
+  (maniglia di drag adiacente), rischio di regressione visiva non
+  verificabile senza poter vedere il rendering reale.
+- Nessuna conferma/undo per l'eliminazione di un articolo: cambierebbe l'UX
+  in modo sostanziale (non richiesto esplicitamente, solo l'area di tocco era
+  segnalata come piccola).
+- `signingConfigs` per la build `release` non aggiunto: la CI compila solo
+  `assembleDebug`, quindi resta un problema latente ma senza impatto pratico
+  finché non si comincia a distribuire build release.

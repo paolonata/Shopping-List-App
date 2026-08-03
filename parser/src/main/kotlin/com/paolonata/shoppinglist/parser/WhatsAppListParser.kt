@@ -26,9 +26,11 @@ object WhatsAppListParser {
         Regex("""^\[\d{1,2}:\d{2}(:\d{2})?,?\s*[^]]*]\s*[^:]{1,60}:\s*""")
     private val exportTimestampDash =
         Regex("""^\d{1,2}:\d{2}(:\d{2})?\s*-\s*[^:]{1,60}:\s*""")
-    private val bulletPrefix = Regex("""^[-•*‣▪◦]\s+""")
+    private val bulletPrefix = Regex("""^[-•‣▪◦]\s+""")
     private val numberedPrefix = Regex("""^\d+[.)]\s+""")
-    private val emphasisMarkers = Regex("""[*_~]""")
+    // Solo ai bordi di una "parola" (non tra due caratteri alfanumerici), altrimenti un
+    // nome come "pasta_barilla" perderebbe l'underscore diventando "Pastabarilla".
+    private val emphasisMarkers = Regex("""(?<!\w)[*_~]|[*_~](?!\w)""")
     private val parenthetical = Regex("""\(([^()]*)\)""")
     private val leadingQuantity = Regex("""^(\d+)\s*[xX×]?\s+(.+)$""")
     private val edgePunctuation = Regex("""^[\s,;.\-–—:]+|[\s,;.\-–—:]+$""")
@@ -59,12 +61,24 @@ object WhatsAppListParser {
         return result.trim()
     }
 
-    /** Splits [line] on commas, but never on a comma that sits inside parentheses. */
+    /**
+     * Splits [line] on commas, but never on a comma that sits inside parentheses, nor on a
+     * comma used as decimal separator between two digits ("1,5 l").
+     *
+     * If the line has unbalanced parentheses (e.g. a stray "(" or a text emoticon like ":("),
+     * tracking depth would never return to 0 and every remaining comma on the line would be
+     * swallowed, collapsing the rest of the message into a single garbage item. In that case
+     * we fall back to a plain split, ignoring parentheses as grouping for this line only.
+     */
     private fun splitOnTopLevelCommas(line: String): List<String> {
+        if (line.count { it == '(' } != line.count { it == ')' }) {
+            return line.split(',')
+        }
         val tokens = mutableListOf<String>()
         val current = StringBuilder()
         var depth = 0
-        for (char in line) {
+        for (i in line.indices) {
+            val char = line[i]
             when (char) {
                 '(' -> {
                     depth++
@@ -75,7 +89,9 @@ object WhatsAppListParser {
                     current.append(char)
                 }
                 ',' -> {
-                    if (depth == 0) {
+                    val decimalComma = current.isNotEmpty() && current.last().isDigit() &&
+                        i + 1 < line.length && line[i + 1].isDigit()
+                    if (depth == 0 && !decimalComma) {
                         tokens.add(current.toString())
                         current.clear()
                     } else {
@@ -93,7 +109,13 @@ object WhatsAppListParser {
         var text = rawToken.trim()
         if (text.isEmpty()) return null
 
-        val note = parenthetical.find(text)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+        // Più parentesi nello stesso token diventano note multiple unite (nessuna persa),
+        // es. "pane (integrale) (2 confezioni)" -> nota "integrale; 2 confezioni".
+        val note = parenthetical.findAll(text)
+            .map { it.groupValues[1].trim() }
+            .filter { it.isNotEmpty() }
+            .joinToString("; ")
+            .takeIf { it.isNotEmpty() }
         text = parenthetical.replace(text, " ")
         text = whitespaceRun.replace(text, " ").trim()
         text = text.replace(edgePunctuation, "")
@@ -102,8 +124,13 @@ object WhatsAppListParser {
         var quantity = 1
         val quantityMatch = leadingQuantity.find(text)
         if (quantityMatch != null) {
-            quantity = quantityMatch.groupValues[1].toIntOrNull() ?: 1
-            text = quantityMatch.groupValues[2].trim()
+            // Un numero troppo grande per un Int (toIntOrNull() -> null) non è una quantità
+            // sensata: meglio lasciarlo nel nome piuttosto che cancellarlo silenziosamente.
+            val parsedQuantity = quantityMatch.groupValues[1].toIntOrNull()
+            if (parsedQuantity != null) {
+                quantity = parsedQuantity.coerceAtLeast(1)
+                text = quantityMatch.groupValues[2].trim()
+            }
         }
         text = text.replace(edgePunctuation, "")
         if (text.isEmpty()) return null

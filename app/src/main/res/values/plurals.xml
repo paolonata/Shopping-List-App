@@ -1,0 +1,21 @@
+<resources>
+    <plurals name="add_preview_title">
+        <item quantity="one">Anteprima (%1$d articolo)</item>
+        <item quantity="other">Anteprima (%1$d articoli)</item>
+    </plurals>
+
+    <plurals name="add_confirm_button">
+        <item quantity="one">Aggiungi %1$d articolo alla lista</item>
+        <item quantity="other">Aggiungi %1$d articoli alla lista</item>
+    </plurals>
+
+    <plurals name="add_items_added_toast">
+        <item quantity="one">%1$d articolo aggiunto alla lista</item>
+        <item quantity="other">%1$d articoli aggiunti alla lista</item>
+    </plurals>
+
+    <plurals name="notification_more_items">
+        <item quantity="one">+ %1$d altro</item>
+        <item quantity="other">+ altri %1$d</item>
+    </plurals>
+</resources>

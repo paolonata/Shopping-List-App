@@ -10,13 +10,20 @@ class ShoppingListRepository(private val dao: ShoppingItemDao) {
     suspend fun getAllOnce(): List<ShoppingItem> = dao.getAllOnce()
 
     suspend fun toggleChecked(item: ShoppingItem) {
-        dao.update(item.copy(isChecked = !item.isChecked))
+        if (item.isChecked) {
+            // Una nuova posizione (in fondo) invece di lasciare quella vecchia: altrimenti,
+            // ri-despuntando un articolo, può ritrovarsi con la stessa position di un altro e
+            // l'ordinamento (isChecked ASC, position ASC) diventa non deterministico.
+            val newPosition = dao.getMaxPosition() + 1
+            dao.uncheckWithNewPosition(item.id, newPosition)
+        } else {
+            dao.setChecked(item.id, true)
+        }
     }
 
     /** Usata dalla notifica persistente: spunta un articolo conoscendone solo l'id. */
     suspend fun markCheckedById(id: Long) {
-        val item = dao.getById(id) ?: return
-        if (!item.isChecked) dao.update(item.copy(isChecked = true))
+        dao.setChecked(id, true)
     }
 
     suspend fun deleteItem(item: ShoppingItem) {
@@ -35,57 +42,26 @@ class ShoppingListRepository(private val dao: ShoppingItemDao) {
     suspend fun updateItemDetails(item: ShoppingItem, name: String, quantity: Int) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        dao.update(item.copy(name = trimmed, quantity = quantity.coerceAtLeast(1)))
+        dao.updateNameAndQuantity(item.id, trimmed, quantity.coerceAtLeast(1))
     }
 
     /**
      * Persiste un nuovo ordine per [orderedItems] (tipicamente la sola sezione "da comprare"):
-     * riassegna la `position` in base all'indice nella lista, in un'unica transazione.
+     * riassegna la `position` in base all'indice nella lista, in un'unica transazione. Tocca
+     * solo il campo `position` (non l'intera riga), così non può annullare una spunta o una
+     * modifica fatta nel frattempo su un altro articolo.
      */
     suspend fun reorderItems(orderedItems: List<ShoppingItem>) {
         if (orderedItems.isEmpty()) return
-        val withNewPositions = orderedItems.mapIndexed { index, item ->
-            item.copy(position = index.toLong())
-        }
-        dao.updateAll(withNewPositions)
+        dao.updatePositions(orderedItems.map { it.id })
     }
 
     /**
      * Adds [parsedItems] to the list. An item whose name matches (case-insensitively) an
-     * existing, still-unchecked item has its quantity merged into that row instead of
-     * creating a duplicate entry.
+     * existing, still-unchecked item — already in the list, or seen earlier in this same
+     * batch — has its quantity merged into that row instead of creating a duplicate entry.
+     * Runs in a single DB transaction. Returns how many of [parsedItems] were actually applied.
      */
-    suspend fun addParsedItems(parsedItems: List<ParsedItem>) {
-        if (parsedItems.isEmpty()) return
-
-        val existingByName = dao.getUnchecked().associateBy { it.name.trim().lowercase() }
-        var nextPosition = dao.getMaxPosition()
-        val toInsert = mutableListOf<ShoppingItem>()
-
-        for (parsed in parsedItems) {
-            val key = parsed.name.trim().lowercase()
-            val existing = existingByName[key]
-            if (existing != null) {
-                dao.update(
-                    existing.copy(
-                        quantity = existing.quantity + parsed.quantity,
-                        note = existing.note ?: parsed.note,
-                    ),
-                )
-            } else {
-                nextPosition += 1
-                toInsert.add(
-                    ShoppingItem(
-                        name = parsed.name,
-                        quantity = parsed.quantity,
-                        note = parsed.note,
-                        position = nextPosition,
-                    ),
-                )
-            }
-        }
-        if (toInsert.isNotEmpty()) {
-            dao.insertAll(toInsert)
-        }
-    }
+    suspend fun addParsedItems(parsedItems: List<ParsedItem>): Int =
+        dao.addParsedItemsTransactional(parsedItems)
 }

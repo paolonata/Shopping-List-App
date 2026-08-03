@@ -4,6 +4,10 @@
     <!-- Richiesto da Android 13+ per mostrare notifiche (incluso il promemoria persistente) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Per ripostare il promemoria in notifica dopo un riavvio del telefono (il sistema lo
+         elimina insieme a tutte le notifiche in sospeso durante lo spegnimento) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Consente di risolvere l'app di riconoscimento vocale su Android 11+ (package visibility) -->
     <queries>
         <intent>
@@ -48,6 +52,16 @@
         <receiver
             android:name=".notification.ShoppingListActionReceiver"
             android:exported="false" />
+
+        <!-- Riposta il promemoria in notifica (se era attivo) dopo un riavvio del telefono -->
+        <receiver
+            android:name=".notification.ShoppingListBootReceiver"
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

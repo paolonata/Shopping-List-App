@@ -11,7 +11,6 @@ import com.paolonata.shoppinglist.parser.WhatsAppListParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,10 +22,6 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
 
     val items: StateFlow<List<ShoppingItem>> = repository.observeItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val checkedCount: StateFlow<Int> = items
-        .map { list -> list.count { it.isChecked } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** Text handed off from a share-sheet intent (e.g. shared from WhatsApp), consumed once. */
     private val _pendingShareText = MutableStateFlow<String?>(null)
@@ -42,16 +37,26 @@ class ShoppingListViewModel(application: Application) : AndroidViewModel(applica
 
     fun previewParse(text: String) = WhatsAppListParser.parse(text)
 
-    fun addItemsFromText(text: String, onDone: (count: Int) -> Unit = {}) {
-        val parsed = WhatsAppListParser.parse(text)
+    /**
+     * [quantityOverride] è la quantità scelta con lo stepper nella barra di aggiunta rapida:
+     * si applica solo se diverso dal default (1), così "2 mele" scritto a testo continua a dare
+     * quantità 2 quando lo stepper non è stato toccato, ma se l'utente lo porta a 3 il testo
+     * intero ("2 mele") diventa il nome e non viene ri-concatenato/ri-parsato come "3 2 mele".
+     */
+    fun addItemsFromText(text: String, quantityOverride: Int = 1, onDone: (count: Int) -> Unit = {}) {
+        val parsed = WhatsAppListParser.parse(text).let { items ->
+            if (quantityOverride > 1) items.map { it.copy(quantity = quantityOverride) } else items
+        }
         addParsedItems(parsed, onDone)
     }
 
     /** Aggiunge direttamente una lista già interpretata (es. l'anteprima con quantità modificate). */
     fun addParsedItems(items: List<ParsedItem>, onDone: (count: Int) -> Unit = {}) {
         viewModelScope.launch {
-            repository.addParsedItems(items)
-            onDone(items.size)
+            // Il conteggio effettivo (articoli uniti o creati) invece di items.size: rimane
+            // corretto anche se qualche articolo viene scartato (es. nome vuoto).
+            val appliedCount = repository.addParsedItems(items)
+            onDone(appliedCount)
         }
     }
 

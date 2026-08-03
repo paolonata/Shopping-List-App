@@ -20,7 +20,13 @@ abstract class ShoppingListDatabase : RoomDatabase() {
                     context.applicationContext,
                     ShoppingListDatabase::class.java,
                     "shopping_list.db",
-                ).build().also { instance = it }
+                )
+                    // Nessuna migrazione scritta ancora: se lo schema cambia senza questo,
+                    // l'app crasha all'avvio su ogni telefono con dati già salvati. I dati
+                    // locali non sono critici (nessun backend), quindi ricreare il DB è
+                    // preferibile a un crash loop.
+                    .fallbackToDestructiveMigration()
+                    .build().also { instance = it }
             }
     }
 }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -102,7 +101,7 @@ import com.paolonata.shoppinglist.ui.theme.ThemePrefs
 fun HomeScreen(
     items: List<ShoppingItem>,
     onAddFromText: () -> Unit,
-    onAddItem: (String) -> Unit,
+    onAddItem: (String, Int) -> Unit,
     onToggleChecked: (ShoppingItem) -> Unit,
     onDeleteItem: (ShoppingItem) -> Unit,
     onEditItem: (ShoppingItem, String, Int) -> Unit,
@@ -136,6 +135,7 @@ fun HomeScreen(
     // ogni volta che si trascina un articolo la cui gesture non è stata reinstallata di recente.
     val currentToBuy by rememberUpdatedState(toBuy)
     val currentAllToBuy by rememberUpdatedState(allToBuy)
+    val currentOnReorderItems by rememberUpdatedState(onReorderItems)
 
     // Quando arriva un nuovo articolo (da qui o da WhatsApp) lo si porta in vista con lo
     // scroll minimo necessario (BringIntoViewRequester), non un salto forzato in cima:
@@ -147,10 +147,22 @@ fun HomeScreen(
         val currentIds = toBuy.map { it.id }.toSet()
         val newIds = currentIds - previousToBuyIds
         if (newIds.isNotEmpty()) {
-            val lastNewItem = toBuy.lastOrNull { it.id in newIds }
-            lastNewItem?.let { item ->
-                bringIntoViewRequesters[item.id]?.let { requester ->
-                    runCatching { requester.bringIntoView() }
+            val lastNewIndex = toBuy.indexOfLast { it.id in newIds }
+            if (lastNewIndex >= 0) {
+                val newItemId = toBuy[lastNewIndex].id
+                val requester = bringIntoViewRequesters[newItemId]
+                if (requester != null) {
+                    try {
+                        requester.bringIntoView()
+                    } catch (e: IllegalStateException) {
+                        // Il layout non è (più) agganciato: niente da portare in vista.
+                    }
+                } else {
+                    // L'articolo non è mai stato composto (lista più lunga dello schermo,
+                    // quindi fuori dal viewport iniziale): nessun requester registrato per lui,
+                    // quindi bringIntoView() non scorrerebbe affatto. Fallback diretto sull'indice
+                    // nella LazyColumn (+1 per l'header "Da prendere" che precede gli articoli).
+                    runCatching { listState.animateScrollToItem(lastNewIndex + 1) }
                 }
             }
         }
@@ -198,7 +210,12 @@ fun HomeScreen(
                         val bringIntoViewRequester = remember(shoppingItem.id) { BringIntoViewRequester() }
                         DisposableEffect(shoppingItem.id) {
                             bringIntoViewRequesters[shoppingItem.id] = bringIntoViewRequester
-                            onDispose { bringIntoViewRequesters.remove(shoppingItem.id) }
+                            onDispose {
+                                bringIntoViewRequesters.remove(shoppingItem.id)
+                                // Altrimenti l'altezza di un articolo eliminato resta per sempre
+                                // nella mappa (piccola perdita di memoria che cresce nel tempo).
+                                itemHeights.remove(shoppingItem.id)
+                            }
                         }
                         val isDragging = draggingId == shoppingItem.id
                         val scale by animateFloatAsState(
@@ -248,7 +265,7 @@ fun HomeScreen(
                                                 dragOffsetY = 0f
                                                 if (finalOrder != null) {
                                                     val byId = currentAllToBuy.associateBy { it.id }
-                                                    onReorderItems(finalOrder.mapNotNull { byId[it] })
+                                                    currentOnReorderItems(finalOrder.mapNotNull { byId[it] })
                                                 }
                                             },
                                             onDragCancel = {
@@ -300,9 +317,12 @@ fun HomeScreen(
 }
 
 private fun shareList(context: Context, items: List<ShoppingItem>) {
-    if (items.isEmpty()) return
+    // Solo quello che manca ancora da comprare: condividere anche quello già preso non è utile
+    // a chi riceve la lista (es. il partner che va a fare la spesa) e può confondere.
+    val toShare = items.filterNot { it.isChecked }
+    if (toShare.isEmpty()) return
     val sb = StringBuilder(context.getString(R.string.share_title))
-    for (item in items) {
+    for (item in toShare) {
         sb.append("\n• ").append(item.name)
         if (item.quantity > 1) sb.append(" ×").append(item.quantity)
     }
@@ -370,7 +390,7 @@ private fun MinimalHeader(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(40.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(48.dp)) {
             if (total > 0) {
                 IconButton(onClick = onShare, modifier = Modifier.align(Alignment.CenterStart)) {
                     Icon(
@@ -388,7 +408,11 @@ private fun MinimalHeader(
                 modifier = Modifier.align(Alignment.Center),
             )
             Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                OutlinedIconButton(icon = Icons.Default.MoreHoriz, onClick = { menuExpanded = true })
+                OutlinedIconButton(
+                    icon = Icons.Default.MoreHoriz,
+                    contentDescription = stringResource(R.string.settings_menu_cd),
+                    onClick = { menuExpanded = true },
+                )
                 val themeMode by ThemePrefs.mode.collectAsState()
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
@@ -463,7 +487,11 @@ private fun MinimalHeader(
 
 /** Icona in un cerchio con bordo sottile — usata per l'unica azione "con contorno" dell'header. */
 @Composable
-private fun OutlinedIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+private fun OutlinedIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .size(36.dp)
@@ -474,7 +502,7 @@ private fun OutlinedIconButton(icon: androidx.compose.ui.graphics.vector.ImageVe
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.size(18.dp),
         )
@@ -535,7 +563,7 @@ private fun MinimalSectionHeader(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.section_add_item_cd),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
@@ -548,7 +576,7 @@ private fun MinimalSectionHeader(
  * per aggiungere un articolo a mano, con stepper per la quantità mentre si scrive. */
 @Composable
 private fun BottomQuickAddBar(
-    onAdd: (String) -> Unit,
+    onAdd: (String, Int) -> Unit,
     onFromWhatsApp: () -> Unit,
     focusRequester: FocusRequester,
 ) {
@@ -558,7 +586,10 @@ private fun BottomQuickAddBar(
     fun submit() {
         val trimmed = value.trim()
         if (trimmed.isNotEmpty()) {
-            onAdd(if (quantity > 1) "$quantity $trimmed" else trimmed)
+            // La quantità viaggia come parametro separato, non più concatenata al testo: prima
+            // "2 mele" + stepper portato a 3 diventava il testo "3 2 mele", che il parser
+            // interpretava come articolo "2 mele" con quantità 3 invece di "Mele" ×3.
+            onAdd(trimmed, quantity)
             value = ""
             quantity = 1
         }
@@ -590,7 +621,12 @@ private fun BottomQuickAddBar(
         ) {
             BasicTextField(
                 value = value,
-                onValueChange = { value = it },
+                onValueChange = { newValue ->
+                    value = newValue
+                    // Altrimenti una quantità impostata e poi il testo cancellato a mano (non
+                    // con "invio"/✓) restava appesa e si applicava al prossimo articolo scritto.
+                    if (newValue.isBlank()) quantity = 1
+                },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
@@ -739,7 +775,6 @@ private fun ItemRow(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-                    .clickable { onStartEdit(item.id) }
                     .padding(horizontal = 4.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -753,7 +788,13 @@ private fun ItemRow(
                     animationSpec = tween(200),
                     label = "textColor",
                 )
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    // Il tap per modificare è solo qui, non su tutta la riga: prima, un tap
+                    // breve sulla maniglia di trascinamento (che intercetta solo long-press+drag,
+                    // non i tap normali) "cadeva" sul clickable della riga e apriva la modifica
+                    // per errore invece di iniziare/ignorare il drag.
+                    modifier = Modifier.weight(1f).clickable { onStartEdit(item.id) },
+                ) {
                     Text(
                         text = item.name,
                         style = MaterialTheme.typography.bodyLarge,
@@ -777,10 +818,13 @@ private fun ItemRow(
                     imageVector = Icons.Default.Close,
                     contentDescription = stringResource(R.string.home_delete_item_cd),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // Area di tocco allargata (10dp di padding invece di 6dp) rispetto alla sola
+                    // icona da 14dp: prima il bersaglio toccabile reale era di soli ~26dp,
+                    // sotto il minimo consigliato.
                     modifier = Modifier
                         .clip(CircleShape)
                         .clickable { onDeleteItem(item) }
-                        .padding(6.dp)
+                        .padding(10.dp)
                         .size(14.dp),
                 )
             }

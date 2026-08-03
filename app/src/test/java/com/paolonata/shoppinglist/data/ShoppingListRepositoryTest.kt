@@ -41,6 +41,22 @@ private class FakeShoppingItemDao : ShoppingItemDao {
     }
 
     override suspend fun getMaxPosition(): Long = state.value.maxOfOrNull { it.position } ?: 0
+
+    override suspend fun setChecked(id: Long, checked: Boolean) {
+        state.value = state.value.map { if (it.id == id) it.copy(isChecked = checked) else it }
+    }
+
+    override suspend fun uncheckWithNewPosition(id: Long, position: Long) {
+        state.value = state.value.map { if (it.id == id) it.copy(isChecked = false, position = position) else it }
+    }
+
+    override suspend fun updateNameAndQuantity(id: Long, name: String, quantity: Int) {
+        state.value = state.value.map { if (it.id == id) it.copy(name = name, quantity = quantity) else it }
+    }
+
+    override suspend fun setPosition(id: Long, position: Long) {
+        state.value = state.value.map { if (it.id == id) it.copy(position = position) else it }
+    }
 }
 
 class ShoppingListRepositoryTest {

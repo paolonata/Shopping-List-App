@@ -43,6 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,7 +61,9 @@ import androidx.compose.ui.unit.dp
 import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.parser.ParsedItem
 
-private fun previewKey(item: ParsedItem): String = "${item.name.trim().lowercase()}|${item.note.orEmpty()}"
+// Un carattere di controllo (non digitabile da tastiera) come separatore: a differenza di
+// "|" non può mai comparire dentro name/note e generare per sbaglio due chiavi identiche.
+private fun previewKey(item: ParsedItem): String = "${item.name.trim().lowercase()}\u0000${item.note.orEmpty()}"
 
 @Composable
 fun AddFromTextScreen(
@@ -69,13 +73,21 @@ fun AddFromTextScreen(
     onCancel: () -> Unit,
 ) {
     var text by remember { mutableStateOf(initialText) }
+    var confirmed by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val parsed = remember(text) { onParse(text) }
-    // Quantità modificate a mano nell'anteprima, che sopravvivono a un ricalcolo del testo
-    // (le voci non più presenti restano semplicemente inutilizzate).
+    // Quantità modificate a mano nell'anteprima, che sopravvivono a un ricalcolo del testo.
     val quantityOverrides = remember { mutableStateMapOf<String, Int>() }
     val preview = parsed.map { item ->
         quantityOverrides[previewKey(item)]?.let { item.copy(quantity = it) } ?: item
+    }
+    // Se un articolo scompare dal testo (l'utente lo cancella) e poi lo riscrive identico,
+    // senza questa pulizia ricomparirebbe con la vecchia quantità invece di quella nel testo.
+    LaunchedEffect(parsed) {
+        val currentKeys = parsed.map { previewKey(it) }.toSet()
+        quantityOverrides.keys.toList().forEach { key ->
+            if (key !in currentKeys) quantityOverrides.remove(key)
+        }
     }
 
     val dictatePrompt = stringResource(R.string.add_dictate_prompt)
@@ -155,7 +167,14 @@ fun AddFromTextScreen(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(stringResource(R.string.add_dictate_button))
                 }
-                TextButton(onClick = { text = readClipboardText(context) ?: text }) {
+                TextButton(onClick = {
+                    // Accoda come la dettatura, invece di sovrascrivere in silenzio quanto già
+                    // scritto/dettato: prima i due pulsanti si comportavano in modo incoerente.
+                    val pasted = readClipboardText(context)
+                    if (!pasted.isNullOrBlank()) {
+                        text = if (text.isBlank()) pasted else text.trimEnd() + "\n" + pasted
+                    }
+                }) {
                     Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(stringResource(R.string.add_paste_button))
@@ -179,7 +198,7 @@ fun AddFromTextScreen(
             )
 
             Text(
-                text = stringResource(R.string.add_preview_title, preview.size),
+                text = pluralStringResource(R.plurals.add_preview_title, preview.size, preview.size),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -211,9 +230,17 @@ fun AddFromTextScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             ConfirmButton(
-                enabled = preview.isNotEmpty(),
-                label = stringResource(R.string.add_confirm_button, preview.size),
-                onClick = { onConfirm(preview) },
+                // Guardia contro il doppio tap: durante il Crossfade tra schermate questa
+                // resta composta (e toccabile) per la durata dell'animazione, e un doppio tap
+                // rapido poteva invocare onConfirm due volte, raddoppiando l'import.
+                enabled = preview.isNotEmpty() && !confirmed,
+                label = pluralStringResource(R.plurals.add_confirm_button, preview.size, preview.size),
+                onClick = {
+                    if (!confirmed) {
+                        confirmed = true
+                        onConfirm(preview)
+                    }
+                },
             )
         }
     }

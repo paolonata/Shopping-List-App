@@ -4,7 +4,6 @@
     <string name="home_title">Spesa</string>
     <string name="home_empty_title">Ancora nulla in lista.</string>
     <string name="home_empty_body">Scrivi il primo articolo qui sotto, o incolla un messaggio da WhatsApp.</string>
-    <string name="home_add_manual">Nuovo</string>
     <string name="home_add_whatsapp">Da WhatsApp</string>
     <string name="quick_add_hint">Aggiungi al carrello</string>
     <string name="share_title">Lista della spesa:</string>
@@ -20,6 +19,8 @@
     <string name="theme_auto">Automatico (sistema)</string>
     <string name="theme_light">Chiaro</string>
     <string name="theme_dark">Scuro</string>
+    <string name="settings_menu_cd">Altre opzioni</string>
+    <string name="section_add_item_cd">Aggiungi articolo</string>
 
     <string name="add_title">Nuova lista</string>
     <string name="add_hint">Es: Acqua bambini, pollo pannato/nuggets, iogurt Danone, 2 pere, 2 mele…</string>
@@ -29,17 +30,11 @@
     <string name="add_dictate_prompt">Dì la lista, o un articolo alla volta</string>
     <string name="add_dictate_hint">Suggerimento: detta un articolo alla volta per separarli meglio. Puoi comunque modificare il testo prima di confermare.</string>
     <string name="add_speech_unavailable">Riconoscimento vocale non disponibile su questo telefono</string>
-    <string name="add_preview_title">Anteprima (%1$d articoli)</string>
     <string name="add_preview_empty">Scrivi o incolla del testo per vedere l\'anteprima della lista.</string>
-    <string name="add_confirm_button">Aggiungi %1$d articoli alla lista</string>
     <string name="add_cancel_button">Annulla</string>
-    <string name="add_remove_preview_item_cd">Rimuovi dall\'anteprima</string>
-    <string name="add_quantity_note">Nota: %1$s</string>
-    <string name="add_items_added_toast">%1$d articoli aggiunti alla lista</string>
 
     <string name="quantity_decrease_cd">Diminuisci quantità</string>
     <string name="quantity_increase_cd">Aumenta quantità</string>
-    <string name="edit_item_cd">Modifica articolo</string>
     <string name="edit_confirm_cd">Salva</string>
     <string name="edit_cancel_cd">Annulla</string>
     <string name="reorder_handle_cd">Trascina per riordinare</string>
@@ -51,12 +46,9 @@
     <string name="notification_permission_denied">Per il promemoria serve il permesso di mostrare notifiche</string>
     <string name="notification_channel_name">Promemoria lista spesa</string>
     <string name="notification_channel_description">Notifica persistente con gli articoli ancora da comprare, spuntabili senza aprire l\'app</string>
-    <string name="notification_progress">%1$d / %2$d</string>
     <string name="notification_title">Spesa · %1$d di %2$d presi</string>
-    <string name="notification_more_items">+ altri %1$d</string>
     <string name="notification_all_done_body">Tutto preso 🎉</string>
     <string name="notification_one_left">1 ancora da prendere</string>
     <string name="notification_n_left">%1$d ancora da prendere</string>
     <string name="notification_check_action">%1$s</string>
-    <string name="app_short_name">Spesa</string>
 </resources>

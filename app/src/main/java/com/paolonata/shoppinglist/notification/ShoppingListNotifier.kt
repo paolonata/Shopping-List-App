@@ -31,10 +31,24 @@ object ShoppingListNotifier {
     private const val NOTIFICATION_ID = 42
     private const val INBOX_MAX_ROWS = 5
     private const val ACTION_MAX = 3
-    private const val BRAND_COLOR = 0xFFCCFF00.toInt()
+    // Nero (coerente con l'attuale palette monocromatica). Era il lime della vecchia palette
+    // "Mercato 2026", ormai non più in uso nell'app.
+    private const val BRAND_COLOR = 0xFF0A0A0A.toInt()
 
     fun show(context: Context, items: List<ShoppingItem>) {
-        if (!hasPostNotificationPermission(context)) return
+        if (!hasPostNotificationPermission(context)) {
+            // L'utente ha revocato il permesso dalle impostazioni di sistema: il toggle nel
+            // menu resterebbe "attivo" pur non potendo più mostrare nulla. Disattivandolo qui
+            // teniamo lo stato coerente con quello che l'utente vede davvero.
+            NotificationPrefs.setEnabled(context, false)
+            return
+        }
+        if (items.isEmpty()) {
+            // Una notifica `setOngoing(true)` senza righe non si può scartare: meglio
+            // rimuoverla del tutto quando non c'è nulla da mostrare.
+            cancel(context)
+            return
+        }
         ensureChannel(context)
 
         val unchecked = items.filter { !it.isChecked }
@@ -73,7 +87,8 @@ object ShoppingListNotifier {
             val inbox = NotificationCompat.InboxStyle().setSummaryText(summary)
             unchecked.take(INBOX_MAX_ROWS).forEach { inbox.addLine("•  ${it.displayName()}") }
             if (unchecked.size > INBOX_MAX_ROWS) {
-                inbox.addLine(context.getString(R.string.notification_more_items, unchecked.size - INBOX_MAX_ROWS))
+                val extra = unchecked.size - INBOX_MAX_ROWS
+                inbox.addLine(context.resources.getQuantityString(R.plurals.notification_more_items, extra, extra))
             }
             builder.setStyle(inbox)
 
