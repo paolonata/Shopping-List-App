@@ -19,7 +19,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // Keystore fisso e committato (non è un segreto: è solo per build di debug) così
+            // ogni build in CI ha la STESSA firma. Senza questo, ogni runner GitHub Actions
+            // genera al volo un keystore di debug diverso, e Android rifiuta di aggiornare
+            // l'app sopra una versione già installata con una firma diversa ("app non
+            // installata"), costringendo l'utente a disinstallare prima di ogni update.
+            storeFile = file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

@@ -91,6 +91,20 @@ Progetto Gradle multi-modulo (Kotlin, version catalog in `gradle/libs.versions.t
   una transazione (`@Transaction` su un metodo default del DAO). Il threshold
   di scambio è 0.6 * height dell'item (invece di 0.5) per rendere lo scambio
   più prevedibile e meno "nervoso".
+  - **Bug: a volte il riordino si resetta com'era all'inizio.** Causa: i
+    callback `onDragStart`/`onDragEnd` vivono dentro
+    `Modifier.pointerInput(shoppingItem.id) { ... }`, che riavvia la coroutine
+    **solo** quando cambia la key (`shoppingItem.id`, stabile) — quindi la
+    stessa closure resta attiva per molte ricomposizioni successive e cattura
+    per **valore** le `val toBuy`/`allToBuy` di quando è stata montata
+    l'ultima volta. Dopo il primo riordino (o qualunque altra ricomposizione
+    non legata a quell'item), un drag successivo su un item la cui gesture
+    non è stata reinstallata ripartiva da uno snapshot vecchio di
+    `toBuy`/`allToBuy`, riscrivendo nel DB l'ordine "com'era all'inizio".
+    **Fix**: `rememberUpdatedState(toBuy)` / `rememberUpdatedState(allToBuy)`
+    (`currentToBuy`/`currentAllToBuy`), usati dentro `onDragStart`/`onDragEnd`
+    al posto dei `val` diretti, così i callback leggono sempre il valore più
+    recente anche senza far ripartire la gesture.
 
 ### Input vocale (dettatura)
 `AddFromTextScreen` ha un pulsante **🎤 Detta** che usa il riconoscimento
@@ -347,9 +361,16 @@ debug come **artifact**:
 3. Sezione **Artifacts** → scarica `app-debug` (è uno **zip**) → estrai
    `app-debug.apk` → installa sul telefono (abilitare "installa da sorgenti
    sconosciute").
-4. **Aggiornamenti**: essendo build di debug non firmate in modo stabile, se dà
-   "firma non corrispondente / app non installata" → **disinstallare la vecchia
-   versione** e reinstallare (i dati locali si perdono, accettabile).
+4. **Aggiornamenti**: ora l'app ha un **keystore di debug fisso e committato**
+   (`app/keystore/debug.keystore`, referenziato in `app/build.gradle.kts` via
+   `signingConfigs.debug`), quindi ogni build CI ha sempre la stessa firma e si
+   può installare **sopra** la versione precedente senza disinstallare prima.
+   Prima invece ogni runner GitHub Actions generava al volo un keystore di
+   debug diverso (nessun `~/.android/debug.keystore` persistito tra le run),
+   quindi ogni APK aveva una firma diversa e Android rifiutava l'update
+   ("app non installata") finché non si disinstallava la vecchia versione.
+   Il keystore di debug non è un segreto (password standard `android`/
+   `androiddebugkey`) quindi è sicuro tenerlo nel repo pubblico.
 
 L'app GitHub sul telefono è **facoltativa**: basta github.com da browser.
 

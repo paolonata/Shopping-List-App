@@ -68,6 +68,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -127,6 +128,14 @@ fun HomeScreen(
         val byId = allToBuy.associateBy { it.id }
         order.mapNotNull { byId[it] } + allToBuy.filter { it.id !in order }
     } ?: allToBuy
+
+    // I callback dentro pointerInput(shoppingItem.id) restano "vivi" tra una ricomposizione e
+    // l'altra finché l'id non cambia (il gesto non si riavvia ad ogni ricomposizione): senza
+    // rememberUpdatedState, onDragStart/onDragEnd catturerebbero per closure il valore di
+    // toBuy/allToBuy della PRIMA composizione, riportando il riordino a com'era all'inizio
+    // ogni volta che si trascina un articolo la cui gesture non è stata reinstallata di recente.
+    val currentToBuy by rememberUpdatedState(toBuy)
+    val currentAllToBuy by rememberUpdatedState(allToBuy)
 
     // Quando arriva un nuovo articolo (da qui o da WhatsApp) lo si porta in vista con lo
     // scroll minimo necessario (BringIntoViewRequester), non un salto forzato in cima:
@@ -216,7 +225,7 @@ fun HomeScreen(
                                             onDragStart = {
                                                 draggingId = shoppingItem.id
                                                 dragOffsetY = 0f
-                                                localOrder = toBuy.map { it.id }
+                                                localOrder = currentToBuy.map { it.id }
                                             },
                                             onDrag = { change, amount ->
                                                 change.consume()
@@ -238,7 +247,7 @@ fun HomeScreen(
                                                 draggingId = null
                                                 dragOffsetY = 0f
                                                 if (finalOrder != null) {
-                                                    val byId = allToBuy.associateBy { it.id }
+                                                    val byId = currentAllToBuy.associateBy { it.id }
                                                     onReorderItems(finalOrder.mapNotNull { byId[it] })
                                                 }
                                             },
