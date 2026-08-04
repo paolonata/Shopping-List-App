@@ -329,13 +329,33 @@ dell'utente ("colori più neutri, moderna, chiaro e scuro curati"):
   avanzamento animata; FAB con entrata in scala; `Crossfade` tra schermate.
 
 ### Icona
-- Generata via script Python con **supersampling** (nessun tool grafico
-  installato nell'ambiente): quadrato arrotondato rosso + checklist bianca con
-  la prima voce spuntata. Lo script vive nella scratchpad di sessione (non
-  committato); se serve rigenerarla, ricrearlo scrivendo PNG RGBA a mano
-  (struct+zlib) nelle cartelle `app/src/main/res/mipmap-*dpi/`
-  (`ic_launcher.png` e `ic_launcher_round.png`), dimensioni 48/72/96/144/192.
-- Verificare sempre l'icona aprendo il PNG generato PRIMA di committare.
+- **Storia**: v1 quadrato rosso (Todoist-like) → v6 "Mercato 2026" ricreata in
+  lime `#CCFF00` (coerente con quel restyle) → rimasta lime anche dopo il
+  passaggio alla palette monocromatica v7, finché l'utente non l'ha segnalata
+  esplicitamente ("ancora vecchia e gialla fosforescente non in tema"). **Fix**:
+  ridisegnata in nero/bianco puro (stesso nero `#0A0A0A` della superficie in
+  tema scuro, stesso bianco `#FAFAFA`), stessa composizione (checklist, 3
+  righe, la prima spuntata) ma **checkbox circolari invece che quadrate**, per
+  coerenza con `CircleCheckbox` della UI reale. Il cerchio spuntato è pieno
+  bianco con spunta nera — esattamente come appare il checkbox spuntato
+  dell'app in tema scuro (fill = onBackground, spunta = background).
+- **Generazione**: da questo giro in poi con **Pillow** (`pip install
+  Pillow`, disponibile nell'ambiente pur non essendo preinstallato) invece di
+  scrivere PNG RGBA a mano — molto più semplice e con antialiasing via
+  supersampling 8× + `Image.resize(..., Image.LANCZOS)`. Lo script vive nella
+  scratchpad di sessione (non committato); se serve rigenerarla, ricrearne uno
+  simile che disegni in uno spazio di coordinate "logico" (es. 1000×1000) e
+  moltiplichi **tutte** le coordinate per `pixel_canvas / 1000` prima di
+  disegnare — bug reale di questo giro: dimenticare quel fattore di scala fa
+  finire il disegno rimpicciolito nell'angolo in alto a sinistra invece che
+  riempire il canvas.
+- File coinvolti: `app/src/main/res/mipmap-*dpi/ic_launcher.png` e
+  `ic_launcher_round.png`, dimensioni 48/72/96/144/192. Nessun adaptive icon
+  XML (`mipmap-anydpi-v26`): sono PNG "legacy" con gli angoli arrotondati (o
+  il cerchio, per la variante round) già disegnati dentro l'immagine.
+- Verificare sempre l'icona aprendo il PNG generato PRIMA di committare (sia
+  a piena risoluzione sia al size più piccolo, 48px, per controllare che
+  resti leggibile).
 
 ## 4. Vincoli dell'ambiente (IMPORTANTE)
 
@@ -533,7 +553,7 @@ sotto) sono stati sistemati nello stesso giro. Riferimento per il futuro:
   incoerente. Fix: anche "Incolla" ora accoda.
 - Chiave di preview (`previewKey`) usava `"|"` come separatore, teoricamente
   collidibile se un nome contenesse quel carattere. Fix: separatore
-  ` ` (non digitabile da tastiera).
+  `\u0000` (un carattere di controllo, non digitabile da tastiera).
 - Nessuna protezione da doppio tap sul pulsante di conferma import (la
   schermata resta composta/toccabile durante il `Crossfade`). Fix: guardia
   `confirmed` in `AddFromTextScreen`.
