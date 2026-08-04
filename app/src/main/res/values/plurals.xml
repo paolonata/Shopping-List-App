@@ -18,4 +18,9 @@
         <item quantity="one">+ %1$d altro</item>
         <item quantity="other">+ altri %1$d</item>
     </plurals>
+
+    <plurals name="reminder_notification_body">
+        <item quantity="one">%1$d articolo ancora da comprare</item>
+        <item quantity="other">%1$d articoli ancora da comprare</item>
+    </plurals>
 </resources>

@@ -1,6 +1,8 @@
 package com.paolonata.shoppinglist.ui
 
 import android.Manifest
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -41,6 +43,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -51,6 +54,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -59,6 +63,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -93,8 +98,14 @@ import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.data.ShoppingItem
 import com.paolonata.shoppinglist.notification.NotificationPrefs
 import com.paolonata.shoppinglist.notification.ShoppingListNotifier
+import com.paolonata.shoppinglist.notification.ShoppingReminderPrefs
+import com.paolonata.shoppinglist.notification.ShoppingReminderScheduler
 import com.paolonata.shoppinglist.ui.theme.ThemeMode
 import com.paolonata.shoppinglist.ui.theme.ThemePrefs
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -385,6 +396,79 @@ private fun MinimalHeader(
         }
     }
 
+    // Promemoria "un colpo solo" per l'intera lista (diverso dalla notifica persistente sopra).
+    var reminderAt by remember { mutableStateOf(ShoppingReminderPrefs.getReminderAt(context)) }
+    var reminderDialogOpen by remember { mutableStateOf(false) }
+    var pendingReminderMillis by remember { mutableStateOf<Long?>(null) }
+    val reminderSetTemplate = stringResource(R.string.reminder_set_toast)
+    val reminderCancelledMessage = stringResource(R.string.reminder_cancelled_toast)
+    val reminderPermissionDeniedMessage = stringResource(R.string.reminder_permission_denied)
+
+    val reminderPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val millis = pendingReminderMillis
+        pendingReminderMillis = null
+        if (granted && millis != null) {
+            ShoppingReminderScheduler.schedule(context, millis)
+            reminderAt = millis
+            Toast.makeText(context, String.format(reminderSetTemplate, formatReminderTime(millis)), Toast.LENGTH_LONG).show()
+        } else if (!granted) {
+            Toast.makeText(context, reminderPermissionDeniedMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun requestReminder(atMillis: Long) {
+        val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        if (needsRuntimePermission) {
+            pendingReminderMillis = atMillis
+            reminderPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            ShoppingReminderScheduler.schedule(context, atMillis)
+            reminderAt = atMillis
+            Toast.makeText(context, String.format(reminderSetTemplate, formatReminderTime(atMillis)), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun cancelReminder() {
+        ShoppingReminderScheduler.cancel(context)
+        reminderAt = null
+        Toast.makeText(context, reminderCancelledMessage, Toast.LENGTH_SHORT).show()
+    }
+
+    fun pickCustomReminderDateTime() {
+        val now = Calendar.getInstance()
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                val chosen = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, day)
+                }
+                TimePickerDialog(
+                    context,
+                    { _, hour, minute ->
+                        chosen.set(Calendar.HOUR_OF_DAY, hour)
+                        chosen.set(Calendar.MINUTE, minute)
+                        chosen.set(Calendar.SECOND, 0)
+                        chosen.set(Calendar.MILLISECOND, 0)
+                        requestReminder(chosen.timeInMillis)
+                    },
+                    now.get(Calendar.HOUR_OF_DAY),
+                    now.get(Calendar.MINUTE),
+                    true,
+                ).show()
+            },
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH),
+            now.get(Calendar.DAY_OF_MONTH),
+        ).show()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -463,6 +547,22 @@ private fun MinimalHeader(
                         },
                         onClick = { menuExpanded = false; toggleNotification() },
                     )
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Alarm,
+                                contentDescription = null,
+                                tint = if (reminderAt != null) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = {
+                            val label = reminderAt?.let {
+                                stringResource(R.string.reminder_menu_item_active, formatReminderTime(it))
+                            } ?: stringResource(R.string.reminder_menu_item)
+                            Text(text = label)
+                        },
+                        onClick = { menuExpanded = false; reminderDialogOpen = true },
+                    )
                     if (total > 0) {
                         HorizontalDivider()
                         DropdownMenuItem(
@@ -488,7 +588,79 @@ private fun MinimalHeader(
             )
         }
     }
+
+    if (reminderDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { reminderDialogOpen = false },
+            title = { Text(stringResource(R.string.reminder_dialog_title)) },
+            text = {
+                Column {
+                    ReminderOptionRow(stringResource(R.string.reminder_option_tonight, timeLabel(REMINDER_EVENING_HOUR))) {
+                        reminderDialogOpen = false
+                        requestReminder(computeReminderMillis(REMINDER_EVENING_HOUR, forceTomorrow = false))
+                    }
+                    ReminderOptionRow(stringResource(R.string.reminder_option_tomorrow_morning, timeLabel(REMINDER_MORNING_HOUR))) {
+                        reminderDialogOpen = false
+                        requestReminder(computeReminderMillis(REMINDER_MORNING_HOUR, forceTomorrow = true))
+                    }
+                    ReminderOptionRow(stringResource(R.string.reminder_option_tomorrow_evening, timeLabel(REMINDER_EVENING_HOUR))) {
+                        reminderDialogOpen = false
+                        requestReminder(computeReminderMillis(REMINDER_EVENING_HOUR, forceTomorrow = true))
+                    }
+                    ReminderOptionRow(stringResource(R.string.reminder_option_custom)) {
+                        reminderDialogOpen = false
+                        pickCustomReminderDateTime()
+                    }
+                    if (reminderAt != null) {
+                        ReminderOptionRow(stringResource(R.string.reminder_option_cancel), destructive = true) {
+                            reminderDialogOpen = false
+                            cancelReminder()
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { reminderDialogOpen = false }) {
+                    Text(stringResource(R.string.reminder_dialog_close))
+                }
+            },
+        )
+    }
 }
+
+private const val REMINDER_MORNING_HOUR = 9
+private const val REMINDER_EVENING_HOUR = 18
+
+@Composable
+private fun ReminderOptionRow(label: String, destructive: Boolean = false, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp),
+    )
+}
+
+private fun timeLabel(hour: Int): String = String.format(Locale.ITALIAN, "%02d:00", hour)
+
+/** Calcola l'orario del preset; se è già passato per oggi, scivola automaticamente al giorno dopo. */
+private fun computeReminderMillis(hour: Int, forceTomorrow: Boolean): Long {
+    val cal = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, hour)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    if (forceTomorrow) cal.add(Calendar.DAY_OF_YEAR, 1)
+    if (cal.timeInMillis <= System.currentTimeMillis()) cal.add(Calendar.DAY_OF_YEAR, 1)
+    return cal.timeInMillis
+}
+
+private fun formatReminderTime(millis: Long): String =
+    SimpleDateFormat("EEEE d MMMM 'alle' HH:mm", Locale.ITALIAN).format(Date(millis))
 
 /** Icona in un cerchio con bordo sottile — usata per l'unica azione "con contorno" dell'header. */
 @Composable

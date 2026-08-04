@@ -52,4 +52,21 @@
     <string name="notification_one_left">1 ancora da prendere</string>
     <string name="notification_n_left">%1$d ancora da prendere</string>
     <string name="notification_check_action">%1$s</string>
+
+    <string name="reminder_menu_item">Promemoria lista</string>
+    <string name="reminder_menu_item_active">Promemoria: %1$s</string>
+    <string name="reminder_dialog_title">Quando vuoi il promemoria?</string>
+    <string name="reminder_option_tonight">Stasera · %1$s</string>
+    <string name="reminder_option_tomorrow_morning">Domani mattina · %1$s</string>
+    <string name="reminder_option_tomorrow_evening">Domani sera · %1$s</string>
+    <string name="reminder_option_custom">Scegli data e ora…</string>
+    <string name="reminder_option_cancel">Annulla promemoria</string>
+    <string name="reminder_dialog_close">Chiudi</string>
+    <string name="reminder_set_toast">Promemoria impostato per %1$s</string>
+    <string name="reminder_cancelled_toast">Promemoria annullato</string>
+    <string name="reminder_permission_denied">Per il promemoria serve il permesso di mostrare notifiche</string>
+    <string name="reminder_notification_title">Promemoria lista della spesa</string>
+    <string name="reminder_notification_body_empty">Avevi impostato un promemoria, ma hai già preso tutto 🎉</string>
+    <string name="reminder_channel_name">Promemoria lista (singolo)</string>
+    <string name="reminder_channel_description">Notifica singola per il promemoria della lista della spesa che hai impostato tu</string>
 </resources>

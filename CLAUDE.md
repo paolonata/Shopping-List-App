@@ -183,6 +183,57 @@ opzione scartata era il widget in home screen).
   Toggle: voce "Promemoria in notifica" nel menu ⋮ dell'header (icona
   campanella piena/vuota secondo lo stato).
 
+### Promemoria "un colpo solo" per la lista (data/ora scelta dall'utente)
+Nato da uno spunto reale dell'utente: "ricordami domani di comprare i
+pannolini" (un vero comando vocale/testuale ricevuto da qualcun altro).
+Discusso prima come possibile feature per singolo articolo (con permesso
+`SCHEDULE_EXACT_ALARM` e UI più complessa) vs per l'intera lista; l'utente ha
+scelto la versione **per l'intera lista** (più semplice). Diversa dalla
+notifica persistente sopra: qui è **una notifica singola, scartabile**, che
+scatta a un orario preciso e poi si "consuma" (non si ripete).
+- **Niente allarme esatto**: `AlarmManager.setAndAllowWhileIdle` (inesatto,
+  non richiede `SCHEDULE_EXACT_ALARM`/permesso utente su Android 12+) invece
+  di `setExactAndAllowWhileIdle`. Per un promemoria della spesa arrivare con
+  qualche minuto di ritardo in Doze non è un problema; evitare la gestione
+  del permesso esatto semplifica molto sia il codice sia la UX.
+- `notification/ShoppingReminderPrefs.kt` — un solo timestamp (epoch millis)
+  in SharedPreferences, non una lista: **un promemoria alla volta** per
+  l'intera lista (coerente con la scelta "versione semplice").
+- `notification/ShoppingReminderScheduler.kt` — `schedule()`/`cancel()`
+  wrappano `AlarmManager` + persistono/cancellano il timestamp;
+  `rescheduleIfNeeded()` (chiamata dal boot receiver) riarma l'allarme se
+  l'orario è ancora nel futuro, oppure — se il telefono era spento quando
+  sarebbe dovuto scattare — fa scattare subito la notifica in ritardo invece
+  di perderla silenziosamente.
+- `notification/ShoppingReminderReceiver.kt` — riceve l'allarme, mostra una
+  notifica **normale** (non `setOngoing`, `setAutoCancel(true)`,
+  `PRIORITY_HIGH`, canale a parte `shopping_list_reminder_oneoff` con
+  `IMPORTANCE_HIGH`, a differenza del canale `IMPORTANCE_DEFAULT` e silenzioso
+  della notifica persistente — qui va bene/serve suono+vibrazione di default,
+  è un vero promemoria "ricordati di fare una cosa", non un pannello sempre
+  visibile) col conteggio articoli ancora da comprare, poi consuma il
+  promemoria (`ShoppingReminderPrefs.setReminderAt(context, null)`).
+- `ShoppingListBootReceiver.kt` esteso per richiamare anche
+  `ShoppingReminderScheduler.rescheduleIfNeeded()` oltre a ripostare la
+  notifica persistente (gli allarmi di `AlarmManager`, come le notifiche, non
+  sopravvivono al riavvio).
+- **UI**: voce "Promemoria lista" nel menu ⋮ (icona sveglia, `Icons.Default.Alarm`),
+  mostra l'orario attivo se impostato (`reminder_menu_item_active`). Tap apre
+  un `AlertDialog` con preset rapidi + scelta libera:
+  - **Stasera** → oggi alle **18:00**
+  - **Domani mattina** → domani alle **9:00**
+  - **Domani sera** → domani alle **18:00**
+  - "Scegli data e ora…" → `DatePickerDialog` + `TimePickerDialog` nativi
+    (Views, non Compose Material3 DatePicker — molto meno codice per un caso
+    d'uso semplice, pattern Compose+Views interop consolidato)
+  - Se un preset è già passato per oggi (es. "Stasera" dopo le 18), scivola
+    automaticamente al giorno dopo invece di far scattare l'allarme subito
+    (`computeReminderMillis`: `if (cal.timeInMillis <= now) cal.add(DAY, 1)`).
+  - "Annulla promemoria" (visibile solo se uno è attivo).
+  - Stesso flusso di richiesta permesso `POST_NOTIFICATIONS` già usato per la
+    notifica persistente (obbligatorio su Android 13+ anche per una notifica
+    "un colpo solo").
+
 ### Fix posizionamento del menu ⋮
 Il `DropdownMenu` collegato all'icona `MoreVert` (in alto a destra) si apriva
 percepito "a sinistra"/scollegato dall'icona. Fix: avvolgere **solo**

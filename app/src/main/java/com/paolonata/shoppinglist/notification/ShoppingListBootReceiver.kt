@@ -10,24 +10,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * La notifica persistente non sopravvive a un riavvio del telefono (il sistema la elimina
- * insieme a tutto lo stato delle app in background). Se l'utente l'aveva attivata, la
- * ripostiamo qui non appena il boot è completo, invece di lasciarla sparita finché non riapre
- * l'app a mano.
+ * La notifica persistente e gli allarmi di [android.app.AlarmManager] non sopravvivono a un
+ * riavvio del telefono (il sistema li elimina insieme a tutto lo stato delle app in
+ * background). Se l'utente aveva attivato la notifica persistente e/o un promemoria per la
+ * lista, li ripristiniamo qui non appena il boot è completo.
  */
 class ShoppingListBootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
-        if (!NotificationPrefs.isEnabled(context.applicationContext)) return
+        val appContext = context.applicationContext
 
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val repository = ShoppingListRepository(
-                    ShoppingListDatabase.getInstance(context.applicationContext).shoppingItemDao(),
-                )
-                ShoppingListNotifier.show(context.applicationContext, repository.getAllOnce())
+                if (NotificationPrefs.isEnabled(appContext)) {
+                    val repository = ShoppingListRepository(
+                        ShoppingListDatabase.getInstance(appContext).shoppingItemDao(),
+                    )
+                    ShoppingListNotifier.show(appContext, repository.getAllOnce())
+                }
+                ShoppingReminderScheduler.rescheduleIfNeeded(appContext)
             } finally {
                 pendingResult.finish()
             }

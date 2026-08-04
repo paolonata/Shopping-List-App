@@ -53,6 +53,11 @@
             android:name=".notification.ShoppingListActionReceiver"
             android:exported="false" />
 
+        <!-- Riceve l'allarme del promemoria "un colpo solo" per l'intera lista -->
+        <receiver
+            android:name=".notification.ShoppingReminderReceiver"
+            android:exported="false" />
+
         <!-- Riposta il promemoria in notifica (se era attivo) dopo un riavvio del telefono -->
         <receiver
             android:name=".notification.ShoppingListBootReceiver"
