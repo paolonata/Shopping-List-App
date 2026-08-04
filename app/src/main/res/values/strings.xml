@@ -19,6 +19,7 @@
     <string name="theme_auto">Automatico (sistema)</string>
     <string name="theme_light">Chiaro</string>
     <string name="theme_dark">Scuro</string>
+    <string name="theme_olive">Olivastro</string>
     <string name="settings_menu_cd">Altre opzioni</string>
     <string name="section_add_item_cd">Aggiungi articolo</string>
 

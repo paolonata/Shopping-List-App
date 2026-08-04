@@ -328,17 +328,46 @@ dell'utente ("colori più neutri, moderna, chiaro e scuro curati"):
   + spring bouncy su `graphicsLayer` scale); testo che sfuma di colore; barra di
   avanzamento animata; FAB con entrata in scala; `Crossfade` tra schermate.
 
+### Tema "Olivastro" (quarta opzione oltre Auto/Chiaro/Scuro)
+Nato dalla discussione sulla nuova icona: l'utente ha scelto la checklist in
+grigio-oliva (non nero) per l'icona, poi ha chiesto esplicitamente di portare
+quello stesso colore anche nell'app come tema selezionabile — "il tema
+olivastro... che è il tema chiaro ma con colori olivastri". Implementazione:
+- `ThemeMode` (`ThemePrefs.kt`) ha un quarto valore `OLIVE` accanto ad
+  `AUTO`/`LIGHT`/`DARK`. `runCatching { ThemeMode.valueOf(...) }` nel
+  read già gestiva bene un enum sconosciuto, quindi l'aggiunta non rompe la
+  persistenza di chi aveva già scelto un tema prima.
+- `Theme.kt`: `OliveColors = lightColorScheme(...)` — **stessa struttura di
+  `LightColors`** (sfondo bianco, superfici bianche) ma con "inchiostro"
+  `OliveInk = #44473A` al posto del nero puro per `primary`/`onBackground`/
+  `onSurface`, e grigi (`surfaceVariant`, `outline`, ecc.) leggermente
+  spostati verso l'oliva invece che neutri. Stesso principio della palette
+  monocromatica: dato che **tutta la UI legge i colori da
+  `MaterialTheme.colorScheme.*`** (mai colori hardcoded), aggiungere un quarto
+  `ColorScheme` è bastato per ricolorare l'intera app — zero modifiche a
+  `HomeScreen.kt`/`AddFromTextScreen.kt` per i colori in sé.
+  `ListaSpesaTheme` ora fa lo `when` direttamente su `ThemeMode` invece che
+  su un booleano `dark`, per poter scegliere fra 4 palette (non più 2).
+- Menu tema (`MinimalHeader` in `HomeScreen.kt`): quarta `ThemeRadioItem`
+  ("Olivastro", stringa `theme_olive`) sotto "Scuro".
+
 ### Icona
 - **Storia**: v1 quadrato rosso (Todoist-like) → v6 "Mercato 2026" ricreata in
   lime `#CCFF00` (coerente con quel restyle) → rimasta lime anche dopo il
   passaggio alla palette monocromatica v7, finché l'utente non l'ha segnalata
-  esplicitamente ("ancora vecchia e gialla fosforescente non in tema"). **Fix**:
-  ridisegnata in nero/bianco puro (stesso nero `#0A0A0A` della superficie in
-  tema scuro, stesso bianco `#FAFAFA`), stessa composizione (checklist, 3
-  righe, la prima spuntata) ma **checkbox circolari invece che quadrate**, per
-  coerenza con `CircleCheckbox` della UI reale. Il cerchio spuntato è pieno
-  bianco con spunta nera — esattamente come appare il checkbox spuntato
-  dell'app in tema scuro (fill = onBackground, spunta = background).
+  esplicitamente ("ancora vecchia e gialla fosforescente non in tema"). Primo
+  fix: ridisegnata in nero/bianco puro (checklist a 3 righe, checkbox
+  circolari coerenti con `CircleCheckbox`) → l'utente l'ha trovata "noiosa".
+  **Fix definitivo**: mostrate 5 concept alternativi (checklist, borsa della
+  spesa, scontrino, spunta singola, fumetto WhatsApp) via `Read` inline in
+  chat (niente Artifact: l'utente ha scelto direttamente dalle immagini
+  mostrate nella conversazione). L'utente ha scelto la **checklist**, ma con
+  **nero → grigio-oliva caldo** (`#5C5F4B` sfondo, `#F4F1E7` crema per gli
+  elementi) invece del nero pieno — "troppo nero il nero". Il concetto
+  "carrello della spesa" richiesto in un secondo momento è confluito nel
+  **tema Olivastro** (vedi sotto) invece che nell'icona.
+- **Icona attuale**: checklist 2 righe (non più 3: più respirata, meno
+  "affollata" alla dimensione reale), stessa palette del tema Olivastro.
 - **Generazione**: da questo giro in poi con **Pillow** (`pip install
   Pillow`, disponibile nell'ambiente pur non essendo preinstallato) invece di
   scrivere PNG RGBA a mano — molto più semplice e con antialiasing via

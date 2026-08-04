@@ -4,7 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-enum class ThemeMode { AUTO, LIGHT, DARK }
+enum class ThemeMode { AUTO, LIGHT, DARK, OLIVE }
 
 /**
  * Sceglie la modalità del tema dell'app (auto/chiaro/scuro), persistita in

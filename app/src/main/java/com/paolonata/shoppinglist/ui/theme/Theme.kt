@@ -89,17 +89,40 @@ private val DarkColors = darkColorScheme(
     outlineVariant = Color(0xFF1C1C1E),
 )
 
+// Tema "Olivastro": stessa struttura del tema chiaro (sfondo bianco), ma con l'inchiostro
+// (primary/onBackground e i grigi) spostato su un grigio-oliva caldo invece del nero puro.
+// Stesso colore usato per la nuova icona dell'app, per coerenza tra icona e tema.
+private val OliveInk = Color(0xFF44473A)
+
+private val OliveColors = lightColorScheme(
+    primary = OliveInk,
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFE3E3D3),
+    onPrimaryContainer = OliveInk,
+    secondary = OliveInk,
+    onSecondary = Color(0xFFFFFFFF),
+    background = Color(0xFFFFFFFF),
+    onBackground = OliveInk,
+    surface = Color(0xFFFFFFFF),
+    onSurface = OliveInk,
+    surfaceVariant = Color(0xFFEFEEE3),
+    onSurfaceVariant = Color(0xFF8C8F78),
+    outline = Color(0xFFDEDDCB),
+    outlineVariant = Color(0xFFEFEEE3),
+)
+
 @Composable
 fun ListaSpesaTheme(content: @Composable () -> Unit) {
     val systemDark = isSystemInDarkTheme()
     val mode by ThemePrefs.mode.collectAsState()
-    val dark = when (mode) {
-        ThemeMode.AUTO -> systemDark
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
+    val colors = when (mode) {
+        ThemeMode.AUTO -> if (systemDark) DarkColors else LightColors
+        ThemeMode.LIGHT -> LightColors
+        ThemeMode.DARK -> DarkColors
+        ThemeMode.OLIVE -> OliveColors
     }
     MaterialTheme(
-        colorScheme = if (dark) DarkColors else LightColors,
+        colorScheme = colors,
         typography = AppTypography,
         content = content,
     )

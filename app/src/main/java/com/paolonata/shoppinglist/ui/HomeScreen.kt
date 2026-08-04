@@ -442,6 +442,11 @@ private fun MinimalHeader(
                         selected = themeMode == ThemeMode.DARK,
                         onSelect = { ThemePrefs.set(context, ThemeMode.DARK); menuExpanded = false },
                     )
+                    ThemeRadioItem(
+                        label = stringResource(R.string.theme_olive),
+                        selected = themeMode == ThemeMode.OLIVE,
+                        onSelect = { ThemePrefs.set(context, ThemeMode.OLIVE); menuExpanded = false },
+                    )
                     HorizontalDivider()
                     DropdownMenuItem(
                         leadingIcon = {
