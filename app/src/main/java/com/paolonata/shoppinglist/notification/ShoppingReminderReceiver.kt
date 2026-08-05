@@ -40,6 +40,7 @@ class ShoppingReminderReceiver : BroadcastReceiver() {
     companion object {
         private const val CHANNEL_ID = "shopping_list_reminder_oneoff"
         private const val NOTIFICATION_ID = 43
+        private const val INBOX_MAX_ROWS = 8
 
         /** Costruisce e mostra la notifica, poi consuma il promemoria (è un colpo solo). */
         suspend fun fireNow(context: Context) {
@@ -55,7 +56,7 @@ class ShoppingReminderReceiver : BroadcastReceiver() {
             ensureChannel(context)
 
             val unchecked = items.filter { !it.isChecked }
-            val body = when {
+            val summary = when {
                 unchecked.isEmpty() -> context.getString(R.string.reminder_notification_body_empty)
                 else -> context.resources.getQuantityString(
                     R.plurals.reminder_notification_body,
@@ -76,14 +77,30 @@ class ShoppingReminderReceiver : BroadcastReceiver() {
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(context.getString(R.string.reminder_notification_title))
-                .setContentText(body)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setContentText(summary)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(openAppIntent)
 
+            if (unchecked.isNotEmpty()) {
+                // Espansa (tap/tendina): elenco puntato degli articoli, come la notifica
+                // persistente — invece del solo conteggio della vista compressa.
+                val inbox = NotificationCompat.InboxStyle().setSummaryText(summary)
+                unchecked.take(INBOX_MAX_ROWS).forEach { inbox.addLine("•  ${it.displayName()}") }
+                if (unchecked.size > INBOX_MAX_ROWS) {
+                    val extra = unchecked.size - INBOX_MAX_ROWS
+                    inbox.addLine(context.resources.getQuantityString(R.plurals.notification_more_items, extra, extra))
+                }
+                builder.setStyle(inbox)
+            } else {
+                builder.setStyle(NotificationCompat.BigTextStyle().bigText(summary))
+            }
+
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
         }
+
+        private fun ShoppingItem.displayName(): String =
+            if (quantity > 1) "$name  ×$quantity" else name
 
         private fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

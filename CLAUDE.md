@@ -211,8 +211,25 @@ scatta a un orario preciso e poi si "consuma" (non si ripete).
   `IMPORTANCE_HIGH`, a differenza del canale `IMPORTANCE_DEFAULT` e silenzioso
   della notifica persistente — qui va bene/serve suono+vibrazione di default,
   è un vero promemoria "ricordati di fare una cosa", non un pannello sempre
-  visibile) col conteggio articoli ancora da comprare, poi consuma il
-  promemoria (`ShoppingReminderPrefs.setReminderAt(context, null)`).
+  visibile), poi consuma il promemoria (`ShoppingReminderPrefs.setReminderAt
+  (context, null)`). Vista compressa: solo il conteggio ("3 articoli ancora
+  da comprare"). Vista espansa (tap sulla tendina): stesso `InboxStyle` a
+  elenco puntato della notifica persistente (`"•  Nome ×qty"`, max 8 righe +
+  "+ altri N") — richiesto dall'utente dopo il primo giro, che voleva vedere
+  la lista vera e propria e non solo il numero.
+- **Debug reale sul device (agosto 2026)**: il promemoria delle 9 non è
+  scattato la prima volta. Non essendoci accesso a log/logcat da questo
+  ambiente, la diagnosi è stata solo di codice (nessun bug trovato) + domande
+  mirate all'utente. Causa confermata: **restrizioni batteria del telefono**
+  (stesso problema già noto per la notifica persistente, vedi sopra) — non
+  aveva concesso "Nessuna restrizione" batteria / autostart all'app. Una
+  volta corretto nelle impostazioni di sistema, ha funzionato. Nota per il
+  futuro: `setAndAllowWhileIdle` (inesatto) è più vulnerabile a queste
+  pulizie aggressive rispetto a un allarme esatto; se il problema si
+  ripresentasse spesso, valutare un pulsante in-app che apra
+  `Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (aiuta solo per il
+  Doze standard Android, non per restrizioni specifiche del vendor come
+  l'autostart MIUI).
 - `ShoppingListBootReceiver.kt` esteso per richiamare anche
   `ShoppingReminderScheduler.rescheduleIfNeeded()` oltre a ripostare la
   notifica persistente (gli allarmi di `AlarmManager`, come le notifiche, non
