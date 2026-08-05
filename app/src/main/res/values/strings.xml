@@ -40,13 +40,13 @@
     <string name="edit_cancel_cd">Annulla</string>
     <string name="reorder_handle_cd">Trascina per riordinare</string>
 
-    <string name="notification_menu_toggle_on">Attiva promemoria in notifica</string>
-    <string name="notification_menu_toggle_off">Disattiva promemoria in notifica</string>
-    <string name="notification_enabled_toast">Promemoria attivo. Se non lo vedi a schermo bloccato, autorizza le notifiche di questa app nelle impostazioni del telefono.</string>
-    <string name="notification_disabled_toast">Promemoria disattivato</string>
-    <string name="notification_permission_denied">Per il promemoria serve il permesso di mostrare notifiche</string>
-    <string name="notification_channel_name">Promemoria lista spesa</string>
-    <string name="notification_channel_description">Notifica persistente con gli articoli ancora da comprare, spuntabili senza aprire l\'app</string>
+    <string name="notification_menu_toggle_on">Attiva lista in lock screen</string>
+    <string name="notification_menu_toggle_off">Disattiva lista in lock screen</string>
+    <string name="notification_enabled_toast">Lista attiva in lock screen. Se non la vedi a schermo bloccato, autorizza le notifiche di questa app nelle impostazioni del telefono.</string>
+    <string name="notification_disabled_toast">Lista in lock screen disattivata</string>
+    <string name="notification_permission_denied">Per la lista in lock screen serve il permesso di mostrare notifiche</string>
+    <string name="notification_channel_name">Lista spesa in lock screen</string>
+    <string name="notification_channel_description">Notifica persistente con gli articoli ancora da comprare, visibile e spuntabile dal lock screen senza aprire l\'app</string>
     <string name="notification_title">Spesa · %1$d di %2$d presi</string>
     <string name="notification_all_done_body">Tutto preso 🎉</string>
     <string name="notification_one_left">1 ancora da prendere</string>

@@ -180,8 +180,17 @@ opzione scartata era il widget in home screen).
   `BroadcastReceiver` finché non la riapre (limite di sistema, non risolvibile).
   Serve il permesso `POST_NOTIFICATIONS` (richiesto a runtime su Android 13+,
   gestito con `rememberLauncherForActivityResult` nel toggle del menu).
-  Toggle: voce "Promemoria in notifica" nel menu ⋮ dell'header (icona
-  campanella piena/vuota secondo lo stato).
+  Toggle: voce "Attiva/Disattiva lista in lock screen" nel menu ⋮ dell'header
+  (icona campanella piena/vuota secondo lo stato). **Rinominata** da "Attiva
+  promemoria in notifica" dopo l'introduzione del promemoria "un colpo solo"
+  sotto: l'utente ha chiesto di chiarire che questa voce non è un "promemoria"
+  in senso stretto ma la lista sempre visibile in notifica/lock screen, per
+  non confonderla con la nuova funzione. Cambiate tutte le stringhe correlate
+  (`notification_menu_toggle_on/off`, `notification_enabled_toast`,
+  `notification_disabled_toast`, `notification_permission_denied`,
+  `notification_channel_name/description`) — stesso `CHANNEL_ID`
+  (`shopping_list_reminder_v3`), nome/descrizione del canale sono tra i pochi
+  campi che si possono aggiornare senza dover creare un nuovo canale.
 
 ### Promemoria "un colpo solo" per la lista (data/ora scelta dall'utente)
 Nato da uno spunto reale dell'utente: "ricordami domani di comprare i
