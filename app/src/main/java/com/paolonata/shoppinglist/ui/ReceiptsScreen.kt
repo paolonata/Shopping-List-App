@@ -47,9 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.paolonata.shoppinglist.R
+import com.paolonata.shoppinglist.data.ReceiptCategoryEntity
 import com.paolonata.shoppinglist.data.ReceiptWithPhotos
 import com.paolonata.shoppinglist.receipts.DeadlineLevel
-import com.paolonata.shoppinglist.receipts.ReceiptCategory
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -76,6 +76,7 @@ fun ReceiptsScreen(
     onTakePhoto: () -> Unit,
     onPickPhoto: () -> Unit,
     onOpen: (Long) -> Unit,
+    categories: List<ReceiptCategoryEntity>,
     remindersOn: Boolean,
     onToggleReminders: () -> Unit,
 ) {
@@ -83,9 +84,10 @@ fun ReceiptsScreen(
 
     // Le categorie che compaiono davvero: filtrare per una casella vuota
     // non serve a nessuno, e la riga resta corta.
-    val used = remember(receipts) {
-        ReceiptCategory.entries.filter { c -> receipts.any { it.receipt.categoryId == c.id } }
+    val used = remember(receipts, categories) {
+        categories.filter { c -> receipts.any { it.receipt.categoryId == c.id } }
     }
+    val byId = remember(categories) { categories.associateBy { it.id } }
     val shown = remember(receipts, filter) {
         if (filter == null) receipts else receipts.filter { it.receipt.categoryId == filter }
     }
@@ -150,7 +152,11 @@ fun ReceiptsScreen(
                         MonthHeader(month = month, entries = entries)
                     }
                     items(entries, key = { it.receipt.id }) { entry ->
-                        ReceiptRow(entry = entry, onClick = { onOpen(entry.receipt.id) })
+                        ReceiptRow(
+                            entry = entry,
+                            category = byId[entry.receipt.categoryId],
+                            onClick = { onOpen(entry.receipt.id) },
+                        )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
@@ -166,7 +172,7 @@ fun ReceiptsScreen(
  */
 @Composable
 private fun CategoryFilters(
-    used: List<ReceiptCategory>,
+    used: List<ReceiptCategoryEntity>,
     selected: String?,
     onSelect: (String?) -> Unit,
 ) {
@@ -245,9 +251,12 @@ private fun MonthHeader(month: String, entries: List<ReceiptWithPhotos>) {
 }
 
 @Composable
-private fun ReceiptRow(entry: ReceiptWithPhotos, onClick: () -> Unit) {
+private fun ReceiptRow(
+    entry: ReceiptWithPhotos,
+    category: ReceiptCategoryEntity?,
+    onClick: () -> Unit,
+) {
     val receipt = entry.receipt
-    val category = ReceiptCategory.fromId(receipt.categoryId)
     val date = runCatching { LocalDate.parse(receipt.date) }.getOrNull()
 
     Row(
@@ -271,11 +280,13 @@ private fun ReceiptRow(entry: ReceiptWithPhotos, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = buildString {
-                    append(category.emoji)
-                    append(' ')
-                    append(category.label)
+                    if (category != null) {
+                        append(category.emoji)
+                        append(' ')
+                        append(category.label)
+                    }
                     if (date != null) {
-                        append(" · ")
+                        if (isNotEmpty()) append(" · ")
                         append(date.format(DAY_FORMAT))
                     }
                     if (entry.photos.size > 1) {

@@ -60,10 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.paolonata.shoppinglist.R
 import com.paolonata.shoppinglist.data.Receipt
+import com.paolonata.shoppinglist.data.ReceiptCategoryEntity
 import com.paolonata.shoppinglist.data.ReceiptWithPhotos
 import com.paolonata.shoppinglist.receipts.DeadlineKind
 import com.paolonata.shoppinglist.receipts.Deadlines
-import com.paolonata.shoppinglist.receipts.ReceiptCategory
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -84,14 +84,18 @@ private val SHORT_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ITALIA
 @Composable
 fun ReceiptDetailScreen(
     entry: ReceiptWithPhotos,
+    categories: List<ReceiptCategoryEntity>,
     onBack: () -> Unit,
     onSave: (Receipt) -> Unit,
     onReturnDone: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onCreateCategory: (String, String) -> Unit,
+    onUpdateCategory: (ReceiptCategoryEntity, String, String) -> Unit,
+    onDeleteCategory: (ReceiptCategoryEntity) -> Unit,
 ) {
     val context = LocalContext.current
     val receipt = entry.receipt
-    val category = ReceiptCategory.fromId(receipt.categoryId)
+    val category = categories.firstOrNull { it.id == receipt.categoryId }
     val purchase = remember(receipt.date) { runCatching { LocalDate.parse(receipt.date) }.getOrNull() }
 
     var editingTitle by remember { mutableStateOf(false) }
@@ -171,8 +175,10 @@ fun ReceiptDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${category.emoji} ${category.label} · " +
-                            (purchase?.format(LONG_DATE) ?: receipt.date),
+                        text = listOfNotNull(
+                            category?.let { "${it.emoji} ${it.label}" },
+                            purchase?.format(LONG_DATE) ?: receipt.date,
+                        ).joinToString(" · "),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -203,7 +209,7 @@ fun ReceiptDetailScreen(
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
                     DetailRow(
                         label = stringResource(R.string.receipt_field_category),
-                        value = "${category.emoji}  ${category.label}",
+                        value = category?.let { "${it.emoji}  ${it.label}" } ?: "—",
                         onClick = { choosingCategory = true },
                     )
                     DetailRow(
@@ -300,10 +306,14 @@ fun ReceiptDetailScreen(
         )
     }
     if (choosingCategory) {
-        CategoryDialog(
-            current = category,
+        CategoryPickerDialog(
+            categories = categories,
+            currentId = receipt.categoryId,
             onDismiss = { choosingCategory = false },
             onPick = { onSave(receipt.copy(categoryId = it.id)); choosingCategory = false },
+            onCreate = onCreateCategory,
+            onUpdate = onUpdateCategory,
+            onDelete = onDeleteCategory,
         )
     }
     if (confirmDelete) {
@@ -561,42 +571,6 @@ private fun TextFieldDialog(
             )
         },
         confirmButton = { TextButton(onClick = { onConfirm(text) }) { Text(stringResource(R.string.save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-    )
-}
-
-@Composable
-private fun CategoryDialog(
-    current: ReceiptCategory,
-    onDismiss: () -> Unit,
-    onPick: (ReceiptCategory) -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.receipt_field_category)) },
-        text = {
-            Column {
-                ReceiptCategory.entries.forEach { entry ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onPick(entry) }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(text = entry.emoji, style = MaterialTheme.typography.bodyLarge)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = entry.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (entry == current) FontWeight.Bold else FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

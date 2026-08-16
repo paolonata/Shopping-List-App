@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.paolonata.shoppinglist.data.ReceiptCategoryEntity
 import com.paolonata.shoppinglist.data.ReceiptRepository
 import com.paolonata.shoppinglist.data.ReceiptWithPhotos
 import com.paolonata.shoppinglist.data.Receipt
@@ -33,6 +34,9 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
     )
 
     val receipts: StateFlow<List<ReceiptWithPhotos>> = repository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val categories: StateFlow<List<ReceiptCategoryEntity>> = repository.observeCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
@@ -80,6 +84,18 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
 
     fun save(receipt: Receipt) {
         viewModelScope.launch { repository.save(receipt) }
+    }
+
+    fun createCategory(label: String, emoji: String) {
+        viewModelScope.launch { repository.createCategory(label, emoji) }
+    }
+
+    fun updateCategory(category: ReceiptCategoryEntity, label: String, emoji: String) {
+        viewModelScope.launch { repository.updateCategory(category, label, emoji) }
+    }
+
+    fun deleteCategory(category: ReceiptCategoryEntity) {
+        viewModelScope.launch { repository.deleteCategory(category.id) }
     }
 
     fun setReturnDone(id: Long, done: Boolean) {

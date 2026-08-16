@@ -112,4 +112,7 @@
     <string name="receipt_deadline_notification_many">%1$d scadenze vicine</string>
     <string name="receipt_deadline_channel_name">Scadenze scontrini</string>
     <string name="receipt_deadline_channel_description">Avviso quando un reso o una garanzia sta per scadere</string>
+    <string name="category_new">Nuova categoria</string>
+    <string name="category_edit">Modifica categoria</string>
+    <string name="category_delete">Elimina categoria</string>
 </resources>

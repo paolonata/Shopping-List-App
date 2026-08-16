@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [ShoppingItem::class, Receipt::class, ReceiptPhoto::class],
-    version = 2,
+    entities = [ShoppingItem::class, Receipt::class, ReceiptPhoto::class, ReceiptCategoryEntity::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class ShoppingListDatabase : RoomDatabase() {
@@ -73,6 +73,34 @@ abstract class ShoppingListDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v2 → v3: le categorie escono dal codice ed entrano nel database,
+         * per poterne aggiungere di proprie. Le otto di partenza vengono
+         * seminate qui, così chi aggiorna se le ritrova già al loro posto.
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `receipt_categories` (
+                        `id` TEXT PRIMARY KEY NOT NULL,
+                        `label` TEXT NOT NULL,
+                        `emoji` TEXT NOT NULL,
+                        `built_in` INTEGER NOT NULL,
+                        `position` INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                ReceiptCategoryEntity.defaults().forEach { c ->
+                    db.execSQL(
+                        "INSERT OR IGNORE INTO `receipt_categories` " +
+                            "(`id`, `label`, `emoji`, `built_in`, `position`) VALUES (?, ?, ?, 1, ?)",
+                        arrayOf(c.id, c.label, c.emoji, c.position),
+                    )
+                }
+            }
+        }
+
         fun getInstance(context: Context): ShoppingListDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -80,7 +108,20 @@ abstract class ShoppingListDatabase : RoomDatabase() {
                     ShoppingListDatabase::class.java,
                     "shopping_list.db",
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    // Chi installa da zero non passa dalle migrazioni: le
+                    // categorie di partenza vanno seminate anche qui.
+                    .addCallback(object : RoomDatabase.Callback() {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            ReceiptCategoryEntity.defaults().forEach { c ->
+                                db.execSQL(
+                                    "INSERT OR IGNORE INTO `receipt_categories` " +
+                                        "(`id`, `label`, `emoji`, `built_in`, `position`) VALUES (?, ?, ?, 1, ?)",
+                                    arrayOf(c.id, c.label, c.emoji, c.position),
+                                )
+                            }
+                        }
+                    })
                     .build().also { instance = it }
             }
     }

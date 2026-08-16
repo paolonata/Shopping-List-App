@@ -2,6 +2,7 @@ package com.paolonata.shoppinglist.data
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
@@ -76,4 +77,25 @@ interface ReceiptDao {
 
     @Query("UPDATE receipts SET favorite = :favorite, updated_at = :now WHERE id = :id")
     suspend fun setFavorite(id: Long, favorite: Boolean, now: Long)
+
+    /* ── Categorie ─────────────────────────────────────────────── */
+
+    @Query("SELECT * FROM receipt_categories ORDER BY position ASC, label ASC")
+    fun observeCategories(): Flow<List<ReceiptCategoryEntity>>
+
+    @Query("SELECT * FROM receipt_categories WHERE id = :id")
+    suspend fun category(id: String): ReceiptCategoryEntity?
+
+    @Query("SELECT COALESCE(MAX(position), 0) FROM receipt_categories")
+    suspend fun maxCategoryPosition(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCategory(category: ReceiptCategoryEntity)
+
+    @Query("DELETE FROM receipt_categories WHERE id = :id AND built_in = 0")
+    suspend fun deleteCategory(id: String)
+
+    /** Gli scontrini di una categoria eliminata non spariscono: tornano ad «Altro». */
+    @Query("UPDATE receipts SET category_id = :fallback, updated_at = :now WHERE category_id = :id")
+    suspend fun reassignCategory(id: String, fallback: String, now: Long)
 }

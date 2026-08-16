@@ -31,6 +31,55 @@ class ReceiptRepository(
 
     fun observeAll(): Flow<List<ReceiptWithPhotos>> = dao.observeAll()
 
+    fun observeCategories(): Flow<List<ReceiptCategoryEntity>> = dao.observeCategories()
+
+    /**
+     * Crea una categoria. L'id nasce dal nome — «Regali di Natale» →
+     * `regali-di-natale` — così resta leggibile guardando il database, con
+     * un suffisso solo se quell'id è già preso.
+     */
+    suspend fun createCategory(label: String, emoji: String) = withContext(Dispatchers.IO) {
+        val clean = label.trim()
+        if (clean.isEmpty()) return@withContext
+        val base = clean.lowercase()
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
+            .ifEmpty { "categoria" }
+        var id = base
+        var n = 2
+        while (dao.category(id) != null) {
+            id = "$base-$n"
+            n++
+        }
+        dao.upsertCategory(
+            ReceiptCategoryEntity(
+                id = id,
+                label = clean,
+                emoji = emoji.ifBlank { "🏷️" },
+                builtIn = false,
+                position = dao.maxCategoryPosition() + 1,
+            ),
+        )
+    }
+
+    /** Rinomina o cambia icona, anche a una delle categorie di partenza. */
+    suspend fun updateCategory(category: ReceiptCategoryEntity, label: String, emoji: String) =
+        withContext(Dispatchers.IO) {
+            val clean = label.trim()
+            if (clean.isEmpty()) return@withContext
+            dao.upsertCategory(category.copy(label = clean, emoji = emoji.ifBlank { category.emoji }))
+        }
+
+    /**
+     * Elimina una categoria creata dall'utente. Gli scontrini che la
+     * usavano non spariscono con lei: tornano ad «Altro».
+     */
+    suspend fun deleteCategory(id: String) = withContext(Dispatchers.IO) {
+        if (id == ReceiptCategoryEntity.FALLBACK_ID) return@withContext
+        dao.reassignCategory(id, ReceiptCategoryEntity.FALLBACK_ID, System.currentTimeMillis())
+        dao.deleteCategory(id)
+    }
+
     fun observeTrashed(): Flow<List<ReceiptWithPhotos>> = dao.observeTrashed()
 
     fun observeById(id: Long): Flow<ReceiptWithPhotos?> = dao.observeById(id)

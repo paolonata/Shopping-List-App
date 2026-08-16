@@ -106,6 +106,7 @@ class MainActivity : ComponentActivity() {
                     val items by viewModel.items.collectAsState()
                     val receipts by receiptsViewModel.receipts.collectAsState()
                     val deadlines by receiptsViewModel.deadlines.collectAsState()
+                    val categories by receiptsViewModel.categories.collectAsState()
                     val pendingShareText by viewModel.pendingShareText.collectAsState()
                     val context = LocalContext.current
 
@@ -187,6 +188,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                     },
                                     onOpen = { screen = Screen.ReceiptDetail(it) },
+                                    categories = categories,
                                     remindersOn = remindersOn,
                                     onToggleReminders = {
                                         if (remindersOn) {
@@ -224,6 +226,7 @@ class MainActivity : ComponentActivity() {
                                 } else {
                                     ReceiptDetailScreen(
                                         entry = entry,
+                                        categories = categories,
                                         onBack = { screen = Screen.Home },
                                         onSave = receiptsViewModel::save,
                                         onReturnDone = { receiptsViewModel.setReturnDone(current.id, it) },
@@ -231,6 +234,9 @@ class MainActivity : ComponentActivity() {
                                             receiptsViewModel.moveToTrash(current.id)
                                             screen = Screen.Home
                                         },
+                                        onCreateCategory = receiptsViewModel::createCategory,
+                                        onUpdateCategory = receiptsViewModel::updateCategory,
+                                        onDeleteCategory = receiptsViewModel::deleteCategory,
                                     )
                                 }
                             }
