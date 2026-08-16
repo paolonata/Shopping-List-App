@@ -7,6 +7,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -105,6 +107,7 @@ fun ReceiptDetailScreen(
     var choosingCategory by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var zoomedPhoto by remember { mutableStateOf<String?>(null) }
+    var showingOcr by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -235,6 +238,13 @@ fun ReceiptDetailScreen(
                             onClick = onRescan,
                         )
                     }
+                    if (!receipt.ocrText.isNullOrBlank()) {
+                        DetailRow(
+                            label = stringResource(R.string.receipt_ocr_text),
+                            value = stringResource(R.string.receipt_ocr_text_hint),
+                            onClick = { showingOcr = true },
+                        )
+                    }
                 }
             }
 
@@ -336,6 +346,30 @@ fun ReceiptDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+    if (showingOcr) {
+        val text = receipt.ocrText.orEmpty()
+        AlertDialog(
+            onDismissRequest = { showingOcr = false },
+            title = { Text(stringResource(R.string.receipt_ocr_text)) },
+            text = {
+                Column(modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { shareText(context, text); showingOcr = false }) {
+                    Text(stringResource(R.string.receipt_ocr_share))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showingOcr = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -632,6 +666,15 @@ private fun shareReceipt(context: Context, entry: ReceiptWithPhotos) {
     }
 
     context.startActivity(Intent.createChooser(intent, context.getString(R.string.receipt_share)))
+}
+
+/** Il testo letto, da mandare a chi può correggere il riconoscimento. */
+private fun shareText(context: Context, text: String) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    context.startActivity(Intent.createChooser(intent, context.getString(R.string.receipt_ocr_share)))
 }
 
 private fun pagesLabel(context: Context, entry: ReceiptWithPhotos): String {

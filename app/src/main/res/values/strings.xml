@@ -119,4 +119,7 @@
     <string name="receipt_rescan_hint">Compila i campi vuoti</string>
     <string name="receipt_rescan_ok">Campi compilati dalla foto</string>
     <string name="receipt_rescan_empty">Non sono riuscito a leggere altro</string>
+    <string name="receipt_ocr_text">Testo letto</string>
+    <string name="receipt_ocr_text_hint">Cosa ha visto la macchina</string>
+    <string name="receipt_ocr_share">Condividi il testo</string>
 </resources>

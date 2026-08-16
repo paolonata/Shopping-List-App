@@ -92,7 +92,17 @@ object ReceiptTextParser {
         TotalHint(Regex("""^\s*totale\b""", RegexOption.IGNORE_CASE), 85),
         TotalHint(Regex("""\btotale\b""", RegexOption.IGNORE_CASE), 70),
         TotalHint(Regex("""importo\s+(pagato|totale)""", RegexOption.IGNORE_CASE), 65),
+        // Scontrini esteri e ricevute del POS: dicono «total», «importe»,
+        // «suma», mai «totale».
+        TotalHint(Regex("""\btotal\b|\bimporte\b|\bsuma\b""", RegexOption.IGNORE_CASE), 60),
         TotalHint(Regex("""^\s*(contanti|carta|bancomat|pagamento\s+elettronico)\b""", RegexOption.IGNORE_CASE), 40),
+        /*
+         * Ultimo ripiego: una riga che è solo una cifra con la valuta
+         * accanto — «714,24 EUR» — su una ricevuta che la parola «totale»
+         * non la stampa affatto. Vale poco, quindi un totale dichiarato la
+         * batte sempre; ma fra questa e nessun importo, questa è meglio.
+         */
+        TotalHint(Regex("""\beur\b|€""", RegexOption.IGNORE_CASE), 35),
     )
 
     /** Lines to ignore while hunting for the total: they lead astray. */
@@ -102,8 +112,20 @@ object ReceiptTextParser {
     )
 
     /** Words that rule a line out as the shop's name. */
+    /**
+     * Parole che escludono una riga dall'essere il nome del negozio.
+     *
+     * Le banche e i circuiti di pagamento sono qui per un motivo preciso:
+     * sulle ricevute del POS il logo dell'istituto è stampato in cima e
+     * più in grande dell'esercente, quindi il riconoscimento lo legge per
+     * primo — e senza questa riga «Sabadell» diventerebbe il nome
+     * dell'albergo.
+     */
     private val MERCHANT_TRAPS = Regex(
-        """scontrino|documento\s+commerciale|ricevuta|fattura|p\.?\s?iva|part\.?\s?iva|cod\.?\s?fisc|c\.?f\.?[:\s]|\bvia\b|\bviale\b|\bpiazza\b|\bcorso\b|\btel\b|telefono|www\.|@|codice|registratore|matricola|cassa\b|operatore|addetto|\bora\b|scontr|rt\s*\d|\bn[.°]\s*\d""",
+        """scontrino|documento\s+commerciale|ricevuta|fattura|p\.?\s?iva|part\.?\s?iva|cod\.?\s?fisc|c\.?f\.?[:\s]|\bvia\b|\bviale\b|\bpiazza\b|\bcorso\b|\btel\b|telefono|www\.|@|codice|registratore|matricola|cassa\b|operatore|addetto|\bora\b|scontr|rt\s*\d|\bn[.°]\s*\d""" +
+            """|\bbanco\b|\bbanca\b|\bbank\b|sabadell|unicredit|intesa|\bbbva\b|santander|caixa""" +
+            """|\bvisa\b|mastercard|maestro|\bamex\b|american\s+express|bancomat|pagobancomat|contactless""" +
+            """|\bcredit\b|\bdebit\b|\bterm\b|terminal|\baid\b|\bventa\b|copia\s+cliente|merchant|\bpos\b""",
         RegexOption.IGNORE_CASE,
     )
 

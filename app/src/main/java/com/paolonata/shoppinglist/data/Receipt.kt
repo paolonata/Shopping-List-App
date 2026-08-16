@@ -46,6 +46,14 @@ data class Receipt(
     @ColumnInfo(name = "warranty_years")
     val warrantyYears: Int? = null,
 
+    /**
+     * Il testo grezzo che il riconoscimento ha letto dalla foto. Serve a
+     * capire *perché* ha sbagliato: senza, un campo compilato male è un
+     * mistero, con questo diventa un caso da aggiungere ai test.
+     */
+    @ColumnInfo(name = "ocr_text")
+    val ocrText: String? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at")

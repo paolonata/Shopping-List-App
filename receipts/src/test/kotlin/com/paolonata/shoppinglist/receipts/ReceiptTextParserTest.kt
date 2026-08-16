@@ -190,18 +190,54 @@ class ReceiptTextParserTest {
     }
 
     @Test
-    fun `hotel bill with the currency spelled out`() {
+    fun `POS receipt - the bank is not the shop, and EUR is enough for the total`() {
+        // La ricevuta del POS di un albergo, letta davvero da un telefono:
+        // il logo della banca è stampato in cima e più in grande del nome
+        // dell'esercente, quindi il riconoscimento lo legge per primo. E
+        // la parola «totale» non compare da nessuna parte.
         val r = parse(
             """
+            Sabadell
             POSEIDON RESORT PALACE
             Benidorm
             BANCO SABADELL
+            TERM: 00810001
             Sabado,15/08/2026            10:25
+            F. Sesion: 15/08/2026   Num. Sesion: 001
+            ***********3007
             714,24 EUR
+            AID: A0000000031010      Visa Credit
             VENTA
+            Oper.: 8405     Autor.: 042704
+            COPIA CLIENTE
             """,
         )
+        assertEquals(714.24, r.amount)
         assertEquals(LocalDate.of(2026, 8, 15), r.date)
-        assertTrue(r.merchant!!.contains("Poseidon", ignoreCase = true), "trovato: ${r.merchant}")
+        assertEquals("Poseidon Resort Palace", r.merchant)
+    }
+
+    @Test
+    fun `a declared total always beats a bare amount in euro`() {
+        val r = parse(
+            """
+            BAR CENTRALE
+            CAFFE                     1,20 EUR
+            CORNETTO                  1,50 EUR
+            TOTALE                    2,70
+            """,
+        )
+        assertEquals(2.70, r.amount)
+    }
+
+    @Test
+    fun `foreign receipt saying total instead of totale`() {
+        val r = parse(
+            """
+            SUPERMERCADO DIA
+            TOTAL                    23,45
+            """,
+        )
+        assertEquals(23.45, r.amount)
     }
 }

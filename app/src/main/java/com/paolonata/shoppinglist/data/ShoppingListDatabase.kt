@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ShoppingItem::class, Receipt::class, ReceiptPhoto::class, ReceiptCategoryEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class ShoppingListDatabase : RoomDatabase() {
@@ -101,6 +101,13 @@ abstract class ShoppingListDatabase : RoomDatabase() {
             }
         }
 
+        /** v3 → v4: si conserva il testo letto dalla foto. */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `receipts` ADD COLUMN `ocr_text` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): ShoppingListDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -108,7 +115,7 @@ abstract class ShoppingListDatabase : RoomDatabase() {
                     ShoppingListDatabase::class.java,
                     "shopping_list.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     // Chi installa da zero non passa dalle migrazioni: le
                     // categorie di partenza vanno seminate anche qui.
                     .addCallback(object : RoomDatabase.Callback() {

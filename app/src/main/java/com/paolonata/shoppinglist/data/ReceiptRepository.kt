@@ -149,6 +149,7 @@ class ReceiptRepository(
             } else {
                 current.categoryId
             },
+            ocrText = text,
             updatedAt = System.currentTimeMillis(),
         )
         if (updated == current) return false
