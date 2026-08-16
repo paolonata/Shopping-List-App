@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import com.paolonata.shoppinglist.receipts.Deadlines
 import com.paolonata.shoppinglist.receipts.ParsedReceipt
+import com.paolonata.shoppinglist.receipts.ReceiptTextParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -27,6 +28,7 @@ import java.util.UUID
 class ReceiptRepository(
     private val context: Context,
     private val dao: ReceiptDao,
+    private val scanner: ReceiptScanner = ReceiptScanner(context),
 ) {
 
     fun observeAll(): Flow<List<ReceiptWithPhotos>> = dao.observeAll()
@@ -91,21 +93,59 @@ class ReceiptRepository(
      * [parsed] managed to read. Nothing is mandatory: an unreadable receipt
      * is still worth keeping — that is the whole point of the app.
      */
-    suspend fun createFrom(sources: List<Uri>, parsed: ParsedReceipt?): Long = withContext(Dispatchers.IO) {
+    suspend fun createFrom(sources: List<Uri>, parsed: ParsedReceipt? = null): Long = withContext(Dispatchers.IO) {
         val today = LocalDate.now()
-        val purchase = parsed?.date ?: today
         val receipt = Receipt(
             title = parsed?.merchant.orEmpty(),
             amountCents = Receipt.centsOf(parsed?.amount),
-            date = purchase.toString(),
-            categoryId = parsed?.category?.id ?: "altro",
+            date = (parsed?.date ?: today).toString(),
+            categoryId = parsed?.category?.id ?: ReceiptCategoryEntity.FALLBACK_ID,
         )
         val id = dao.insert(receipt)
-        val photos = sources.mapIndexedNotNull { index, uri ->
-            storePhoto(uri, id, index)
-        }
+        val photos = sources.mapIndexedNotNull { index, uri -> storePhoto(uri, id, index) }
         if (photos.isNotEmpty()) dao.insertPhotos(photos)
+
+        // Lo scontrino è già salvato: la lettura viene dopo, e i campi si
+        // riempiono da soli quando arriva. Se ML Kit ci mette un secondo,
+        // quel secondo non lo aspetta nessuno.
+        if (parsed == null) photos.firstOrNull()?.let { fillFromPhoto(id, File(it.path)) }
         id
+    }
+
+    /**
+     * Rilegge la foto e compila i campi ancora vuoti. Quello che hai
+     * scritto tu non viene mai sovrascritto: la macchina propone dove non
+     * c'è niente, non corregge le persone.
+     */
+    suspend fun rescan(receiptId: Long): Boolean = withContext(Dispatchers.IO) {
+        val entry = dao.getById(receiptId) ?: return@withContext false
+        val photo = entry.photos.minByOrNull { it.position } ?: return@withContext false
+        fillFromPhoto(receiptId, File(photo.path))
+    }
+
+    private suspend fun fillFromPhoto(receiptId: Long, file: File): Boolean {
+        val text = scanner.read(file) ?: return false
+        val parsed = ReceiptTextParser.parse(text)
+        val current = dao.getById(receiptId)?.receipt ?: return false
+
+        val updated = current.copy(
+            title = current.title.ifBlank { parsed.merchant.orEmpty() },
+            amountCents = current.amountCents ?: Receipt.centsOf(parsed.amount),
+            date = if (current.date == LocalDate.now().toString() && parsed.date != null) {
+                parsed.date.toString()
+            } else {
+                current.date
+            },
+            categoryId = if (current.categoryId == ReceiptCategoryEntity.FALLBACK_ID && parsed.category != null) {
+                parsed.category.id
+            } else {
+                current.categoryId
+            },
+            updatedAt = System.currentTimeMillis(),
+        )
+        if (updated == current) return false
+        dao.update(updated)
+        return true
     }
 
     /** Adds pages to a receipt that already exists. */

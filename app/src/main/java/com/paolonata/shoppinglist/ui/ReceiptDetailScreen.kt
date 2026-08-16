@@ -89,6 +89,7 @@ fun ReceiptDetailScreen(
     onSave: (Receipt) -> Unit,
     onReturnDone: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onRescan: () -> Unit,
     onCreateCategory: (String, String) -> Unit,
     onUpdateCategory: (ReceiptCategoryEntity, String, String) -> Unit,
     onDeleteCategory: (ReceiptCategoryEntity) -> Unit,
@@ -227,6 +228,13 @@ fun ReceiptDetailScreen(
                         value = pagesLabel(context, entry),
                         onClick = null,
                     )
+                    if (entry.photos.isNotEmpty()) {
+                        DetailRow(
+                            label = stringResource(R.string.receipt_rescan),
+                            value = stringResource(R.string.receipt_rescan_hint),
+                            onClick = onRescan,
+                        )
+                    }
                 }
             }
 

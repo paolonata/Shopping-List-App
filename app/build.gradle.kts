@@ -81,6 +81,10 @@ dependencies {
 
     implementation(libs.exifinterface)
 
+    // Riconoscimento del testo sul telefono: il modello viaggia dentro
+    // l'APK, quindi funziona senza rete e senza Play Services.
+    implementation(libs.mlkit.text.recognition)
+
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)

@@ -124,6 +124,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val savedMessage = stringResource(R.string.receipts_saved_toast)
+                    val rescanOkMessage = stringResource(R.string.receipt_rescan_ok)
+                    val rescanEmptyMessage = stringResource(R.string.receipt_rescan_empty)
                     fun saved() = Toast.makeText(context, savedMessage, Toast.LENGTH_SHORT).show()
 
                     // La fotocamera di sistema scrive nel file che le passiamo;
@@ -233,6 +235,15 @@ class MainActivity : ComponentActivity() {
                                         onDelete = {
                                             receiptsViewModel.moveToTrash(current.id)
                                             screen = Screen.Home
+                                        },
+                                        onRescan = {
+                                            receiptsViewModel.rescan(current.id) { found ->
+                                                Toast.makeText(
+                                                    this@MainActivity,
+                                                    if (found) rescanOkMessage else rescanEmptyMessage,
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                            }
                                         },
                                         onCreateCategory = receiptsViewModel::createCategory,
                                         onUpdateCategory = receiptsViewModel::updateCategory,

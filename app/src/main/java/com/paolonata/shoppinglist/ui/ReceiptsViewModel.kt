@@ -72,10 +72,9 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
     fun addFromPhotos(sources: List<Uri>, onSaved: (Long) -> Unit = {}) {
         if (sources.isEmpty()) return
         viewModelScope.launch {
-            // La lettura automatica arriva nella tappa successiva: per ora lo
-            // scontrino nasce con la sua foto e la data di oggi, che è già
-            // abbastanza per non perderlo.
-            val id = repository.createFrom(sources, parsed = null)
+            // Lo scontrino viene salvato subito; la lettura del testo
+            // arriva un attimo dopo e i campi si riempiono da soli.
+            val id = repository.createFrom(sources)
             onSaved(id)
         }
     }
@@ -84,6 +83,11 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
 
     fun save(receipt: Receipt) {
         viewModelScope.launch { repository.save(receipt) }
+    }
+
+    /** Rilegge la foto: serve quando il primo scatto era storto o scuro. */
+    fun rescan(id: Long, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch { onDone(repository.rescan(id)) }
     }
 
     fun createCategory(label: String, emoji: String) {

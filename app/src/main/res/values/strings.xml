@@ -115,4 +115,8 @@
     <string name="category_new">Nuova categoria</string>
     <string name="category_edit">Modifica categoria</string>
     <string name="category_delete">Elimina categoria</string>
+    <string name="receipt_rescan">Rileggi la foto</string>
+    <string name="receipt_rescan_hint">Compila i campi vuoti</string>
+    <string name="receipt_rescan_ok">Campi compilati dalla foto</string>
+    <string name="receipt_rescan_empty">Non sono riuscito a leggere altro</string>
 </resources>
