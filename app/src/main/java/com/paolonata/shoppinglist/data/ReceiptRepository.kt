@@ -128,16 +128,24 @@ class ReceiptRepository(
         val parsed = ReceiptTextParser.parse(text)
         val current = dao.getById(receiptId)?.receipt ?: return false
 
+        // Copie locali: sono proprietà di un altro modulo, e il compilatore
+        // non può dare per scontato che restino le stesse fra il controllo
+        // e l'uso.
+        val readDate = parsed.date
+        val readCategory = parsed.category
+
         val updated = current.copy(
             title = current.title.ifBlank { parsed.merchant.orEmpty() },
             amountCents = current.amountCents ?: Receipt.centsOf(parsed.amount),
-            date = if (current.date == LocalDate.now().toString() && parsed.date != null) {
-                parsed.date.toString()
+            // La data si propone solo se era rimasta a oggi, cioè se
+            // nessuno l'ha ancora decisa.
+            date = if (current.date == LocalDate.now().toString() && readDate != null) {
+                readDate.toString()
             } else {
                 current.date
             },
-            categoryId = if (current.categoryId == ReceiptCategoryEntity.FALLBACK_ID && parsed.category != null) {
-                parsed.category.id
+            categoryId = if (current.categoryId == ReceiptCategoryEntity.FALLBACK_ID && readCategory != null) {
+                readCategory.id
             } else {
                 current.categoryId
             },
