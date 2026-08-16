@@ -56,6 +56,21 @@ interface ReceiptDao {
     @Query("SELECT * FROM receipts WHERE deleted_at IS NOT NULL AND deleted_at < :before")
     suspend fun expiredTrash(before: Long): List<ReceiptWithPhotos>
 
+    /**
+     * Scontrini con una scadenza entro [limitIso], per il controllo di ogni
+     * mattina. Filtra nel database invece di scorrere tutto l'archivio: al
+     * risveglio da Doze conta fare in fretta e non svegliare il disco.
+     */
+    @Query(
+        """
+        SELECT * FROM receipts
+        WHERE deleted_at IS NULL
+          AND ((return_until IS NOT NULL AND return_done_at IS NULL AND return_until <= :limitIso)
+            OR (warranty_until IS NOT NULL AND warranty_until <= :limitIso))
+        """,
+    )
+    suspend fun expiringSoon(limitIso: String): List<Receipt>
+
     @Query("UPDATE receipts SET return_done_at = :doneAt, updated_at = :now WHERE id = :id")
     suspend fun setReturnDone(id: Long, doneAt: Long?, now: Long)
 

@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.paolonata.shoppinglist.data.ReceiptRepository
 import com.paolonata.shoppinglist.data.ReceiptWithPhotos
+import com.paolonata.shoppinglist.data.Receipt
 import com.paolonata.shoppinglist.data.ShoppingListDatabase
 import com.paolonata.shoppinglist.receipts.DeadlineKind
 import com.paolonata.shoppinglist.receipts.DeadlineStatus
@@ -73,6 +74,12 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
             val id = repository.createFrom(sources, parsed = null)
             onSaved(id)
         }
+    }
+
+    fun open(id: Long) = repository.observeById(id)
+
+    fun save(receipt: Receipt) {
+        viewModelScope.launch { repository.save(receipt) }
     }
 
     fun setReturnDone(id: Long, done: Boolean) {

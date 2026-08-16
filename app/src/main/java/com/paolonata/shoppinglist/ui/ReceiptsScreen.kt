@@ -17,18 +17,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,8 +76,20 @@ fun ReceiptsScreen(
     onTakePhoto: () -> Unit,
     onPickPhoto: () -> Unit,
     onOpen: (Long) -> Unit,
+    remindersOn: Boolean,
+    onToggleReminders: () -> Unit,
 ) {
-    val byMonth = remember(receipts) { groupByMonth(receipts) }
+    var filter by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Le categorie che compaiono davvero: filtrare per una casella vuota
+    // non serve a nessuno, e la riga resta corta.
+    val used = remember(receipts) {
+        ReceiptCategory.entries.filter { c -> receipts.any { it.receipt.categoryId == c.id } }
+    }
+    val shown = remember(receipts, filter) {
+        if (filter == null) receipts else receipts.filter { it.receipt.categoryId == filter }
+    }
+    val byMonth = remember(shown) { groupByMonth(shown) }
     val urgent = remember(deadlines) { deadlines.filter { it.status.urgent } }
 
     Scaffold(
@@ -82,6 +102,25 @@ fun ReceiptsScreen(
                         onSelect = onSectionChange,
                         modifier = Modifier.align(Alignment.Center),
                     )
+                    IconButton(
+                        onClick = onToggleReminders,
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                    ) {
+                        Icon(
+                            imageVector = if (remindersOn) {
+                                Icons.Default.NotificationsActive
+                            } else {
+                                Icons.Default.NotificationsNone
+                            },
+                            contentDescription = stringResource(R.string.receipt_reminders_cd),
+                            tint = if (remindersOn) {
+                                MaterialTheme.colorScheme.onBackground
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
         },
@@ -97,6 +136,15 @@ fun ReceiptsScreen(
                 if (urgent.isNotEmpty()) {
                     item(key = "deadlines") { DeadlineBanner(urgent) }
                 }
+                if (used.size > 1) {
+                    item(key = "filters") {
+                        CategoryFilters(
+                            used = used,
+                            selected = filter,
+                            onSelect = { filter = it },
+                        )
+                    }
+                }
                 byMonth.forEach { (month, entries) ->
                     item(key = "hdr_$month") {
                         MonthHeader(month = month, entries = entries)
@@ -108,6 +156,62 @@ fun ReceiptsScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * Il filtro per categoria: una riga di pastiglie che scorre, quella
+ * attiva piena. Compare solo quando le categorie in archivio sono più di
+ * una — con tutti scontrini della spesa non filtrerebbe niente.
+ */
+@Composable
+private fun CategoryFilters(
+    used: List<ReceiptCategory>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(key = "all") {
+            FilterPill(
+                label = stringResource(R.string.filter_all),
+                selected = selected == null,
+                onClick = { onSelect(null) },
+            )
+        }
+        items(used, key = { it.id }) { category ->
+            FilterPill(
+                label = "${category.emoji}  ${category.label}",
+                selected = selected == category.id,
+                onClick = { onSelect(if (selected == category.id) null else category.id) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.onBackground)
+                } else {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape)
+                },
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground,
+        )
     }
 }
 

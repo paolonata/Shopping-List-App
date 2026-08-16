@@ -3,4 +3,6 @@
      solo la cartella degli scatti in arrivo, dentro la memoria privata. -->
 <paths>
     <files-path name="scatti" path="captures/" />
+    <!-- e le foto già archiviate, per poterle condividere -->
+    <files-path name="scontrini" path="receipts/" />
 </paths>

@@ -70,6 +70,11 @@
             android:name=".notification.ShoppingReminderReceiver"
             android:exported="false" />
 
+        <!-- Guarda ogni mattina se qualche reso o garanzia sta per scadere -->
+        <receiver
+            android:name=".notification.ReceiptDeadlineReceiver"
+            android:exported="false" />
+
         <!-- Riposta il promemoria in notifica (se era attivo) dopo un riavvio del telefono -->
         <receiver
             android:name=".notification.ShoppingListBootReceiver"

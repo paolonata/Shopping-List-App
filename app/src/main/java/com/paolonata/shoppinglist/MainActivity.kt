@@ -1,7 +1,10 @@
 package com.paolonata.shoppinglist
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -18,18 +21,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.paolonata.shoppinglist.notification.NotificationPrefs
+import com.paolonata.shoppinglist.notification.ReceiptDeadlinePrefs
+import com.paolonata.shoppinglist.notification.ReceiptDeadlineScheduler
 import com.paolonata.shoppinglist.notification.ShoppingListNotifier
 import com.paolonata.shoppinglist.ui.AddFromTextScreen
 import com.paolonata.shoppinglist.ui.AppSection
 import com.paolonata.shoppinglist.ui.HomeScreen
+import com.paolonata.shoppinglist.ui.ReceiptDetailScreen
 import com.paolonata.shoppinglist.ui.ReceiptsScreen
 import com.paolonata.shoppinglist.ui.ReceiptsViewModel
 import com.paolonata.shoppinglist.ui.ShoppingListViewModel
@@ -43,6 +51,7 @@ private const val MAX_PAGES = 10
 private sealed interface Screen {
     data object Home : Screen
     data class AddFromText(val initialText: String) : Screen
+    data class ReceiptDetail(val id: Long) : Screen
 }
 
 /** Permette a `screen` di sopravvivere a rotazione/ricreazione dell'Activity. */
@@ -51,10 +60,15 @@ private val ScreenSaver = Saver<Screen, List<String>>(
         when (screen) {
             is Screen.Home -> listOf("home")
             is Screen.AddFromText -> listOf("add", screen.initialText)
+            is Screen.ReceiptDetail -> listOf("receipt", screen.id.toString())
         }
     },
     restore = { saved ->
-        if (saved.getOrNull(0) == "add") Screen.AddFromText(saved.getOrElse(1) { "" }) else Screen.Home
+        when (saved.getOrNull(0)) {
+            "add" -> Screen.AddFromText(saved.getOrElse(1) { "" })
+            "receipt" -> saved.getOrNull(1)?.toLongOrNull()?.let { Screen.ReceiptDetail(it) } ?: Screen.Home
+            else -> Screen.Home
+        }
     },
 )
 
@@ -80,12 +94,33 @@ class MainActivity : ComponentActivity() {
             ListaSpesaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Home) }
-                    var section by rememberSaveable { mutableStateOf(AppSection.LIST) }
+                    var section by rememberSaveable {
+                        mutableStateOf(
+                            if (intent?.getBooleanExtra(EXTRA_OPEN_RECEIPTS, false) == true) {
+                                AppSection.RECEIPTS
+                            } else {
+                                AppSection.LIST
+                            },
+                        )
+                    }
                     val items by viewModel.items.collectAsState()
                     val receipts by receiptsViewModel.receipts.collectAsState()
                     val deadlines by receiptsViewModel.deadlines.collectAsState()
                     val pendingShareText by viewModel.pendingShareText.collectAsState()
                     val context = LocalContext.current
+
+                    var remindersOn by remember { mutableStateOf(ReceiptDeadlinePrefs.isEnabled(this@MainActivity)) }
+                    val remindersOnMessage = stringResource(R.string.receipt_reminders_on)
+                    val remindersOffMessage = stringResource(R.string.receipt_reminders_off)
+
+                    val notificationPermission = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission(),
+                    ) { granted ->
+                        if (granted) {
+                            ReceiptDeadlineScheduler.enable(this@MainActivity)
+                            remindersOn = true
+                        }
+                    }
 
                     val savedMessage = stringResource(R.string.receipts_saved_toast)
                     fun saved() = Toast.makeText(context, savedMessage, Toast.LENGTH_SHORT).show()
@@ -108,7 +143,7 @@ class MainActivity : ComponentActivity() {
                         if (uris.isNotEmpty()) receiptsViewModel.addFromPhotos(uris) { saved() }
                     }
 
-                    BackHandler(enabled = screen is Screen.AddFromText) {
+                    BackHandler(enabled = screen is Screen.AddFromText || screen is Screen.ReceiptDetail) {
                         screen = Screen.Home
                     }
 
@@ -151,7 +186,21 @@ class MainActivity : ComponentActivity() {
                                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                                         )
                                     },
-                                    onOpen = { /* il dettaglio arriva nella prossima tappa */ },
+                                    onOpen = { screen = Screen.ReceiptDetail(it) },
+                                    remindersOn = remindersOn,
+                                    onToggleReminders = {
+                                        if (remindersOn) {
+                                            ReceiptDeadlineScheduler.disable(context)
+                                            remindersOn = false
+                                            Toast.makeText(context, remindersOffMessage, Toast.LENGTH_SHORT).show()
+                                        } else if (needsNotificationPermission(context)) {
+                                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        } else {
+                                            ReceiptDeadlineScheduler.enable(context)
+                                            remindersOn = true
+                                            Toast.makeText(context, remindersOnMessage, Toast.LENGTH_LONG).show()
+                                        }
+                                    },
                                 )
                             } else HomeScreen(
                                 items = items,
@@ -166,6 +215,25 @@ class MainActivity : ComponentActivity() {
                                 onClearChecked = viewModel::clearChecked,
                                 onClearAll = viewModel::clearAll,
                             )
+
+                            is Screen.ReceiptDetail -> {
+                                val entry = receipts.firstOrNull { it.receipt.id == current.id }
+                                if (entry == null) {
+                                    // Cestinato mentre era aperto: si torna all'archivio.
+                                    LaunchedEffect(current.id) { screen = Screen.Home }
+                                } else {
+                                    ReceiptDetailScreen(
+                                        entry = entry,
+                                        onBack = { screen = Screen.Home },
+                                        onSave = receiptsViewModel::save,
+                                        onReturnDone = { receiptsViewModel.setReturnDone(current.id, it) },
+                                        onDelete = {
+                                            receiptsViewModel.moveToTrash(current.id)
+                                            screen = Screen.Home
+                                        },
+                                    )
+                                }
+                            }
 
                             is Screen.AddFromText -> AddFromTextScreen(
                                 initialText = current.initialText,
@@ -189,6 +257,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    companion object {
+        /** Impostato dalla notifica delle scadenze: apre l'app già sugli scontrini. */
+        const val EXTRA_OPEN_RECEIPTS = "open_receipts"
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -200,6 +273,12 @@ class MainActivity : ComponentActivity() {
      * un permesso temporaneo alla fotocamera per scriverci: la galleria del
      * telefono non si riempie di scontrini.
      */
+    private fun needsNotificationPermission(context: android.content.Context): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+
     private fun newCaptureUri(): Uri {
         val dir = File(filesDir, "captures").apply { mkdirs() }
         val file = File(dir, "scatto-${System.currentTimeMillis()}.jpg")

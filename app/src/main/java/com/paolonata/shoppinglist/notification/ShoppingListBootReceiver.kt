@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
  * La notifica persistente e gli allarmi di [android.app.AlarmManager] non sopravvivono a un
  * riavvio del telefono (il sistema li elimina insieme a tutto lo stato delle app in
  * background). Se l'utente aveva attivato la notifica persistente e/o un promemoria per la
- * lista, li ripristiniamo qui non appena il boot è completo.
+ * lista, li ripristiniamo qui non appena il boot è completo. Lo stesso vale per il controllo
+ * quotidiano delle scadenze degli scontrini.
  */
 class ShoppingListBootReceiver : BroadcastReceiver() {
 
@@ -31,6 +32,7 @@ class ShoppingListBootReceiver : BroadcastReceiver() {
                     ShoppingListNotifier.show(appContext, repository.getAllOnce())
                 }
                 ShoppingReminderScheduler.rescheduleIfNeeded(appContext)
+                ReceiptDeadlineScheduler.rescheduleIfNeeded(appContext)
             } finally {
                 pendingResult.finish()
             }

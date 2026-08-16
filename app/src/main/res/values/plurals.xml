@@ -23,4 +23,8 @@
         <item quantity="one">%1$d articolo ancora da comprare</item>
         <item quantity="other">%1$d articoli ancora da comprare</item>
     </plurals>
+    <plurals name="receipt_pages">
+        <item quantity="one">%1$d pagina</item>
+        <item quantity="other">%1$d pagine</item>
+    </plurals>
 </resources>
