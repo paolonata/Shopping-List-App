@@ -46,6 +46,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Il modulo :receipts ragiona in java.time (LocalDate): senza questo
+        // non esiste sotto Android 8, e minSdk qui è 24.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -59,6 +62,8 @@ android {
 
 dependencies {
     implementation(project(":parser"))
+    implementation(project(":receipts"))
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.ktx)
@@ -74,6 +79,8 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
 
+    implementation(libs.exifinterface)
+
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
@@ -81,4 +88,5 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(project(":parser"))
+    testImplementation(project(":receipts"))
 }

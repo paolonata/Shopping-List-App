@@ -1,11 +1,15 @@
 package com.paolonata.shoppinglist
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,13 +22,23 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.core.content.FileProvider
 import com.paolonata.shoppinglist.notification.NotificationPrefs
 import com.paolonata.shoppinglist.notification.ShoppingListNotifier
 import com.paolonata.shoppinglist.ui.AddFromTextScreen
+import com.paolonata.shoppinglist.ui.AppSection
 import com.paolonata.shoppinglist.ui.HomeScreen
+import com.paolonata.shoppinglist.ui.ReceiptsScreen
+import com.paolonata.shoppinglist.ui.ReceiptsViewModel
 import com.paolonata.shoppinglist.ui.ShoppingListViewModel
 import com.paolonata.shoppinglist.ui.theme.ListaSpesaTheme
 import com.paolonata.shoppinglist.ui.theme.ThemePrefs
+import java.io.File
+
+/** Quante pagine si possono scegliere in un colpo dalla galleria. */
+private const val MAX_PAGES = 10
 
 private sealed interface Screen {
     data object Home : Screen
@@ -47,6 +61,10 @@ private val ScreenSaver = Saver<Screen, List<String>>(
 class MainActivity : ComponentActivity() {
 
     private val viewModel: ShoppingListViewModel by viewModels()
+    private val receiptsViewModel: ReceiptsViewModel by viewModels()
+
+    /** Dove la fotocamera di sistema scrive lo scatto in arrivo. */
+    private var pendingCapture: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,11 +80,42 @@ class MainActivity : ComponentActivity() {
             ListaSpesaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Home) }
+                    var section by rememberSaveable { mutableStateOf(AppSection.LIST) }
                     val items by viewModel.items.collectAsState()
+                    val receipts by receiptsViewModel.receipts.collectAsState()
+                    val deadlines by receiptsViewModel.deadlines.collectAsState()
                     val pendingShareText by viewModel.pendingShareText.collectAsState()
+                    val context = LocalContext.current
+
+                    val savedMessage = stringResource(R.string.receipts_saved_toast)
+                    fun saved() = Toast.makeText(context, savedMessage, Toast.LENGTH_SHORT).show()
+
+                    // La fotocamera di sistema scrive nel file che le passiamo;
+                    // la galleria restituisce direttamente le immagini scelte.
+                    val takePicture = rememberLauncherForActivityResult(
+                        ActivityResultContracts.TakePicture(),
+                    ) { ok ->
+                        val uri = pendingCapture
+                        pendingCapture = null
+                        if (ok && uri != null) {
+                            receiptsViewModel.addFromPhotos(listOf(uri)) { saved() }
+                        }
+                    }
+
+                    val pickPhotos = rememberLauncherForActivityResult(
+                        ActivityResultContracts.PickMultipleVisualMedia(MAX_PAGES),
+                    ) { uris ->
+                        if (uris.isNotEmpty()) receiptsViewModel.addFromPhotos(uris) { saved() }
+                    }
 
                     BackHandler(enabled = screen is Screen.AddFromText) {
                         screen = Screen.Home
+                    }
+
+                    // Dagli scontrini, Indietro torna alla lista invece di
+                    // chiudere l'app: è la schermata da cui si è partiti.
+                    BackHandler(enabled = screen is Screen.Home && section == AppSection.RECEIPTS) {
+                        section = AppSection.LIST
                     }
 
                     LaunchedEffect(pendingShareText) {
@@ -86,8 +135,28 @@ class MainActivity : ComponentActivity() {
 
                     Crossfade(targetState = screen, label = "screen") { current ->
                         when (current) {
-                            is Screen.Home -> HomeScreen(
+                            is Screen.Home -> if (section == AppSection.RECEIPTS) {
+                                ReceiptsScreen(
+                                    receipts = receipts,
+                                    deadlines = deadlines,
+                                    section = section,
+                                    onSectionChange = { section = it },
+                                    onTakePhoto = {
+                                        val uri = newCaptureUri()
+                                        pendingCapture = uri
+                                        takePicture.launch(uri)
+                                    },
+                                    onPickPhoto = {
+                                        pickPhotos.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                        )
+                                    },
+                                    onOpen = { /* il dettaglio arriva nella prossima tappa */ },
+                                )
+                            } else HomeScreen(
                                 items = items,
+                                section = section,
+                                onSectionChange = { section = it },
                                 onAddFromText = { screen = Screen.AddFromText("") },
                                 onAddItem = { text, quantity -> viewModel.addItemsFromText(text, quantity) },
                                 onToggleChecked = viewModel::toggleChecked,
@@ -124,6 +193,17 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleShareIntent(intent)
+    }
+
+    /**
+     * Un file nuovo per ogni scatto, dentro la memoria privata dell'app, e
+     * un permesso temporaneo alla fotocamera per scriverci: la galleria del
+     * telefono non si riempie di scontrini.
+     */
+    private fun newCaptureUri(): Uri {
+        val dir = File(filesDir, "captures").apply { mkdirs() }
+        val file = File(dir, "scatto-${System.currentTimeMillis()}.jpg")
+        return FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
     }
 
     private fun handleShareIntent(intent: Intent?) {

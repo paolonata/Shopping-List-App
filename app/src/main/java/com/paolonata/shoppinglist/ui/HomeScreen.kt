@@ -111,6 +111,8 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     items: List<ShoppingItem>,
+    section: AppSection,
+    onSectionChange: (AppSection) -> Unit,
     onAddFromText: () -> Unit,
     onAddItem: (String, Int) -> Unit,
     onToggleChecked: (ShoppingItem) -> Unit,
@@ -184,6 +186,8 @@ fun HomeScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             MinimalHeader(
+                section = section,
+                onSectionChange = onSectionChange,
                 total = items.size,
                 checked = items.count { it.isChecked },
                 onShare = { shareList(context, items) },
@@ -347,6 +351,8 @@ private fun shareList(context: Context, items: List<ShoppingItem>) {
 /** Header minimale ed editoriale: titolo piccolo centrato, icone senza sfondo colorato. */
 @Composable
 private fun MinimalHeader(
+    section: AppSection,
+    onSectionChange: (AppSection) -> Unit,
     total: Int,
     checked: Int,
     onShare: () -> Unit,
@@ -485,10 +491,9 @@ private fun MinimalHeader(
                     )
                 }
             }
-            Text(
-                text = stringResource(R.string.home_title).uppercase(),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            SectionSwitch(
+                current = section,
+                onSelect = onSectionChange,
                 modifier = Modifier.align(Alignment.Center),
             )
             Box(modifier = Modifier.align(Alignment.CenterEnd)) {

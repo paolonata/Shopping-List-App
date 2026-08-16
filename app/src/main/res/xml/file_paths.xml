@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dove il FileProvider può prendere i file da passare alla fotocamera:
+     solo la cartella degli scatti in arrivo, dentro la memoria privata. -->
+<paths>
+    <files-path name="scatti" path="captures/" />
+</paths>

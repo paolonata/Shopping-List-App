@@ -69,4 +69,16 @@
     <string name="reminder_notification_body_empty">Avevi impostato un promemoria, ma hai già preso tutto 🎉</string>
     <string name="reminder_channel_name">Promemoria lista (singolo)</string>
     <string name="reminder_channel_description">Notifica singola per il promemoria della lista della spesa che hai impostato tu</string>
+    <!-- Scontrini -->
+    <string name="section_list">Lista</string>
+    <string name="section_receipts">Scontrini</string>
+    <string name="receipt_untitled">Scontrino</string>
+    <string name="receipts_take_photo">Scatta</string>
+    <string name="receipts_from_gallery">Galleria</string>
+    <string name="receipts_empty_title">Nessuno scontrino</string>
+    <string name="receipts_empty_text">Fotografane uno: resta qui, sul telefono, anche senza rete.</string>
+    <string name="receipts_saved_toast">Scontrino salvato</string>
+    <string name="receipts_photo_failed">Non sono riuscito a leggere la foto</string>
+    <string name="deadline_one">Il %1$s scade %2$s</string>
+    <string name="deadline_many">%1$d scadenze vicine · la prima %2$s</string>
 </resources>

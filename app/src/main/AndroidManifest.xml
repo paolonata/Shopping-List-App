@@ -48,6 +48,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Passa alla fotocamera di sistema il file dove scrivere lo scatto, senza
+             esporre la memoria privata dell'app -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Riceve il tocco sulle righe della notifica persistente (funziona anche ad app chiusa) -->
         <receiver
             android:name=".notification.ShoppingListActionReceiver"
