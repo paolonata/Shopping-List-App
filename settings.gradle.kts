@@ -18,3 +18,4 @@ rootProject.name = "ListaSpesaWhatsApp"
 
 include(":app")
 include(":parser")
+include(":receipts")
