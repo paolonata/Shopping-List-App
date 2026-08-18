@@ -7,6 +7,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +33,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material3.AlertDialog
@@ -49,15 +52,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.paolonata.shoppinglist.R
@@ -527,10 +535,36 @@ private fun ReceiptPage(path: String, onClick: () -> Unit) {
     }
 }
 
-/** La foto a schermo intero: è lì che uno scontrino si legge davvero. */
+/**
+ * La foto a schermo intero, con lo zoom.
+ *
+ * È qui che uno scontrino si legge davvero, e uno scontrino è scritto in
+ * piccolo: pizzicare ingrandisce fino a sei volte, trascinare sposta, un
+ * doppio tocco fa il giro completo — ingrandisce se è a riposo, torna a
+ * posto se è già ingrandito.
+ *
+ * Lo spostamento è tenuto dentro i bordi: senza un limite si finisce col
+ * trascinare l'immagine fuori dallo schermo e restare davanti al vuoto,
+ * senza capire dove sia finita.
+ */
 @Composable
 private fun PhotoViewer(path: String, onDismiss: () -> Unit) {
     val bitmap = remember(path) { decodeFull(path) } ?: return
+
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var boxSize by remember { mutableStateOf(IntSize.Zero) }
+
+    fun clamp(candidate: Offset, atScale: Float): Offset {
+        if (atScale <= 1f) return Offset.Zero
+        val maxX = (boxSize.width * (atScale - 1f)) / 2f
+        val maxY = (boxSize.height * (atScale - 1f)) / 2f
+        return Offset(
+            candidate.x.coerceIn(-maxX, maxX),
+            candidate.y.coerceIn(-maxY, maxY),
+        )
+    }
+
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
@@ -539,18 +573,75 @@ private fun PhotoViewer(path: String, onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .clickable(onClick = onDismiss),
+                .onSizeChanged { boxSize = it },
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            val next = (scale * zoom).coerceIn(1f, MAX_ZOOM)
+                            scale = next
+                            offset = clamp(offset + pan, next)
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = { tap ->
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = DOUBLE_TAP_ZOOM
+                                    // Ingrandisce verso il punto toccato, non
+                                    // verso il centro: si tocca quello che si
+                                    // vuole leggere.
+                                    val center = Offset(size.width / 2f, size.height / 2f)
+                                    offset = clamp((center - tap) * (DOUBLE_TAP_ZOOM - 1f), DOUBLE_TAP_ZOOM)
+                                }
+                            },
+                            onTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    onDismiss()
+                                }
+                            },
+                        )
+                    },
             )
+
+            // Con lo zoom attivo il tocco singolo rimette a posto invece di
+            // chiudere, quindi una via d'uscita esplicita serve.
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.close),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }
+
+private const val MAX_ZOOM = 6f
+private const val DOUBLE_TAP_ZOOM = 2.5f
 
 @Composable
 private fun PillButton(

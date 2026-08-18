@@ -122,4 +122,5 @@
     <string name="receipt_ocr_text">Testo letto</string>
     <string name="receipt_ocr_text_hint">Cosa ha visto la macchina</string>
     <string name="receipt_ocr_share">Condividi il testo</string>
+    <string name="close">Chiudi</string>
 </resources>
