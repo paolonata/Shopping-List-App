@@ -116,6 +116,7 @@ fun ReceiptDetailScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var zoomedPhoto by remember { mutableStateOf<String?>(null) }
     var showingOcr by remember { mutableStateOf(false) }
+    var choosingPlace by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -224,6 +225,28 @@ fun ReceiptDetailScreen(
                         value = category?.let { "${it.emoji}  ${it.label}" } ?: "—",
                         onClick = { choosingCategory = true },
                     )
+                    DetailRow(
+                        label = stringResource(R.string.receipt_field_place),
+                        value = receipt.placeName?.let { name ->
+                            listOfNotNull(name, receipt.placeAddress?.takeIf { it.isNotBlank() })
+                                .joinToString(" · ")
+                        } ?: stringResource(R.string.receipt_place_none),
+                        onClick = { choosingPlace = true },
+                    )
+                    if (receipt.placeLat != null && receipt.placeLon != null) {
+                        DetailRow(
+                            label = stringResource(R.string.receipt_place_map),
+                            value = stringResource(R.string.receipt_place_map_hint),
+                            onClick = {
+                                openInMaps(
+                                    context,
+                                    receipt.placeLat,
+                                    receipt.placeLon,
+                                    receipt.placeName.orEmpty(),
+                                )
+                            },
+                        )
+                    }
                     DetailRow(
                         label = stringResource(R.string.receipt_field_date),
                         value = purchase?.format(SHORT_DATE) ?: receipt.date,
@@ -378,6 +401,28 @@ fun ReceiptDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showingOcr = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+    if (choosingPlace) {
+        PlacePickerDialog(
+            // Si parte dal nome del negozio già noto: nove volte su dieci
+            // la ricerca è quella.
+            initialQuery = receipt.placeName ?: receipt.title,
+            onDismiss = { choosingPlace = false },
+            onPick = { place ->
+                onSave(
+                    receipt.copy(
+                        placeName = place.name,
+                        placeAddress = place.address,
+                        placeLat = place.latitude,
+                        placeLon = place.longitude,
+                        // Uno scontrino senza negozio prende il nome del
+                        // posto: è esattamente quello che manca.
+                        title = receipt.title.ifBlank { place.name },
+                    ),
+                )
+                choosingPlace = false
             },
         )
     }
@@ -757,6 +802,17 @@ private fun shareReceipt(context: Context, entry: ReceiptWithPhotos) {
     }
 
     context.startActivity(Intent.createChooser(intent, context.getString(R.string.receipt_share)))
+}
+
+/**
+ * Apre il punto nell'app di mappe già installata. Una mappa dentro
+ * l'app costerebbe una chiave Google o una libreria pesante, e in cambio
+ * darebbe una mappa peggiore di quella che hai già.
+ */
+private fun openInMaps(context: Context, lat: Double, lon: Double, label: String) {
+    val query = android.net.Uri.encode(label.ifBlank { "$lat,$lon" })
+    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:$lat,$lon?q=$lat,$lon($query)"))
+    runCatching { context.startActivity(intent) }
 }
 
 /** Il testo letto, da mandare a chi può correggere il riconoscimento. */

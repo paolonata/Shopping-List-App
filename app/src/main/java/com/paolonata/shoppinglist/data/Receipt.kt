@@ -54,6 +54,16 @@ data class Receipt(
     @ColumnInfo(name = "ocr_text")
     val ocrText: String? = null,
 
+    /* Dove hai comprato: nome, indirizzo e coordinate per la mappa. */
+    @ColumnInfo(name = "place_name")
+    val placeName: String? = null,
+    @ColumnInfo(name = "place_address")
+    val placeAddress: String? = null,
+    @ColumnInfo(name = "place_lat")
+    val placeLat: Double? = null,
+    @ColumnInfo(name = "place_lon")
+    val placeLon: Double? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at")

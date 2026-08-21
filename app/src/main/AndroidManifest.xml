@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Serve solo alla ricerca del luogo d'acquisto su OpenStreetMap: è
+         l'unica cosa in tutta l'app che esce in rete, e solo mentre la si usa.
+         Foto, importi e riconoscimento del testo restano sul telefono. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Per il pulsante «sono qui»: propone il negozio in cui ti trovi invece
+         di farti scrivere il nome. Chiesto solo quando lo si tocca. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+
     <!-- Richiesto da Android 13+ per mostrare notifiche (incluso il promemoria persistente) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

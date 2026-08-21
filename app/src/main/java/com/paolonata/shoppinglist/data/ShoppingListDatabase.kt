@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ShoppingItem::class, Receipt::class, ReceiptPhoto::class, ReceiptCategoryEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class ShoppingListDatabase : RoomDatabase() {
@@ -108,6 +108,16 @@ abstract class ShoppingListDatabase : RoomDatabase() {
             }
         }
 
+        /** v4 → v5: dove hai comprato. */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `receipts` ADD COLUMN `place_name` TEXT")
+                db.execSQL("ALTER TABLE `receipts` ADD COLUMN `place_address` TEXT")
+                db.execSQL("ALTER TABLE `receipts` ADD COLUMN `place_lat` REAL")
+                db.execSQL("ALTER TABLE `receipts` ADD COLUMN `place_lon` REAL")
+            }
+        }
+
         fun getInstance(context: Context): ShoppingListDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -115,7 +125,7 @@ abstract class ShoppingListDatabase : RoomDatabase() {
                     ShoppingListDatabase::class.java,
                     "shopping_list.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     // Chi installa da zero non passa dalle migrazioni: le
                     // categorie di partenza vanno seminate anche qui.
                     .addCallback(object : RoomDatabase.Callback() {

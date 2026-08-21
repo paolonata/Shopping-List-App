@@ -125,4 +125,14 @@
     <string name="close">Chiudi</string>
     <string name="receipts_from_pdf">Importa un PDF</string>
     <string name="receipts_pdf_failed">Non sono riuscito ad aprire il PDF</string>
+    <string name="receipt_field_place">Luogo</string>
+    <string name="receipt_place_none">— cerca dove</string>
+    <string name="receipt_place_map">Sulla mappa</string>
+    <string name="receipt_place_map_hint">Apri in mappe</string>
+    <string name="place_title">Dove hai comprato</string>
+    <string name="place_hint">Nome del negozio, o indirizzo</string>
+    <string name="place_search">Cerca</string>
+    <string name="place_here">Sono qui</string>
+    <string name="place_intro">Cerca il negozio per nome, oppure tocca il mirino per usare dove ti trovi. Serve la connessione: è l\'unica cosa dell\'app che esce in rete.</string>
+    <string name="place_nothing">Nessun risultato. Prova col nome del negozio e la città, o con l\'indirizzo.</string>
 </resources>
