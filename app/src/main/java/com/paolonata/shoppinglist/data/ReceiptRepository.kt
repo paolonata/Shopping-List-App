@@ -157,6 +157,31 @@ class ReceiptRepository(
         return true
     }
 
+    /**
+     * Crea uno scontrino da un PDF, una pagina per foglio. Serve per le
+     * ricevute che arrivano per email: lì non c'è niente da fotografare.
+     */
+    suspend fun createFromPdf(uri: Uri): Long? = withContext(Dispatchers.IO) {
+        val rendered = PdfPages.render(context, uri, photoDir())
+        if (rendered.isEmpty()) return@withContext null
+
+        val id = dao.insert(Receipt(date = LocalDate.now().toString()))
+        dao.insertPhotos(
+            rendered.mapIndexed { index, file ->
+                ReceiptPhoto(
+                    receiptId = id,
+                    path = file.absolutePath,
+                    position = index,
+                    sizeBytes = file.length(),
+                )
+            },
+        )
+        // Una ricevuta in PDF è testo vero, non una foto storta: la lettura
+        // automatica qui azzecca quasi sempre.
+        fillFromPhoto(id, rendered.first())
+        id
+    }
+
     /** Adds pages to a receipt that already exists. */
     suspend fun addPhotos(receiptId: Long, sources: List<Uri>) = withContext(Dispatchers.IO) {
         val from = dao.photosOf(receiptId).size

@@ -79,6 +79,11 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** Importa una ricevuta in PDF. Il callback riceve null se non si apre. */
+    fun addFromPdf(uri: Uri, onDone: (Long?) -> Unit = {}) {
+        viewModelScope.launch { onDone(repository.createFromPdf(uri)) }
+    }
+
     fun open(id: Long) = repository.observeById(id)
 
     fun save(receipt: Receipt) {

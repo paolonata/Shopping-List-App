@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val savedMessage = stringResource(R.string.receipts_saved_toast)
+                    val pdfFailedMessage = stringResource(R.string.receipts_pdf_failed)
                     val rescanOkMessage = stringResource(R.string.receipt_rescan_ok)
                     val rescanEmptyMessage = stringResource(R.string.receipt_rescan_empty)
                     fun saved() = Toast.makeText(context, savedMessage, Toast.LENGTH_SHORT).show()
@@ -144,6 +145,22 @@ class MainActivity : ComponentActivity() {
                         ActivityResultContracts.PickMultipleVisualMedia(MAX_PAGES),
                     ) { uris ->
                         if (uris.isNotEmpty()) receiptsViewModel.addFromPhotos(uris) { saved() }
+                    }
+
+                    // Il selettore di foto non mostra i PDF: per quelli serve
+                    // il selettore di documenti del sistema.
+                    val pickPdf = rememberLauncherForActivityResult(
+                        ActivityResultContracts.OpenDocument(),
+                    ) { uri ->
+                        if (uri != null) {
+                            receiptsViewModel.addFromPdf(uri) { id ->
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    if (id != null) savedMessage else pdfFailedMessage,
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        }
                     }
 
                     BackHandler(enabled = screen is Screen.AddFromText || screen is Screen.ReceiptDetail) {
@@ -189,6 +206,7 @@ class MainActivity : ComponentActivity() {
                                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                                         )
                                     },
+                                    onPickPdf = { pickPdf.launch(arrayOf("application/pdf")) },
                                     onOpen = { screen = Screen.ReceiptDetail(it) },
                                     categories = categories,
                                     remindersOn = remindersOn,

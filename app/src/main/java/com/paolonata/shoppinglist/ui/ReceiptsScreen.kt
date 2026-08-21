@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -75,6 +76,7 @@ fun ReceiptsScreen(
     onSectionChange: (AppSection) -> Unit,
     onTakePhoto: () -> Unit,
     onPickPhoto: () -> Unit,
+    onPickPdf: () -> Unit,
     onOpen: (Long) -> Unit,
     categories: List<ReceiptCategoryEntity>,
     remindersOn: Boolean,
@@ -126,7 +128,13 @@ fun ReceiptsScreen(
                 }
             }
         },
-        bottomBar = { CaptureBar(onTakePhoto = onTakePhoto, onPickPhoto = onPickPhoto) },
+        bottomBar = {
+            CaptureBar(
+                onTakePhoto = onTakePhoto,
+                onPickPhoto = onPickPhoto,
+                onPickPdf = onPickPdf,
+            )
+        },
     ) { padding ->
         if (receipts.isEmpty()) {
             ReceiptsEmptyState(modifier = Modifier.fillMaxSize().padding(padding))
@@ -397,7 +405,11 @@ private fun DeadlineBanner(urgent: List<UpcomingDeadline>) {
 
 /** Barra fissa in basso, gemella di quella della lista: le due strade per entrare. */
 @Composable
-private fun CaptureBar(onTakePhoto: () -> Unit, onPickPhoto: () -> Unit) {
+private fun CaptureBar(
+    onTakePhoto: () -> Unit,
+    onPickPhoto: () -> Unit,
+    onPickPdf: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -418,6 +430,36 @@ private fun CaptureBar(onTakePhoto: () -> Unit, onPickPhoto: () -> Unit) {
             primary = false,
             onClick = onPickPhoto,
             modifier = Modifier.weight(1f),
+        )
+        // Le ricevute che arrivano per email non si fotografano.
+        IconOnlyButton(
+            icon = Icons.Default.PictureAsPdf,
+            contentDescription = stringResource(R.string.receipts_from_pdf),
+            onClick = onPickPdf,
+        )
+    }
+}
+
+@Composable
+private fun IconOnlyButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier = Modifier
+            .size(50.dp)
+            .clip(shape)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.size(19.dp),
         )
     }
 }

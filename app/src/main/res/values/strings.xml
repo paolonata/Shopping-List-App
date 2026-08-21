@@ -123,4 +123,6 @@
     <string name="receipt_ocr_text_hint">Cosa ha visto la macchina</string>
     <string name="receipt_ocr_share">Condividi il testo</string>
     <string name="close">Chiudi</string>
+    <string name="receipts_from_pdf">Importa un PDF</string>
+    <string name="receipts_pdf_failed">Non sono riuscito ad aprire il PDF</string>
 </resources>
