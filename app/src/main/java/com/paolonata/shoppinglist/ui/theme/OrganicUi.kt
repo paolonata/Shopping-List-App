@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -58,6 +60,9 @@ fun money(value: Double?): String = if (value == null) "—" else itMoney.format
 
 /** "€ 84,32". */
 fun eur(value: Double?): String = if (value == null) "—" else "€ " + itMoney.format(value)
+
+/** 4390 → "€ 43,90". Gli importi sono in centesimi: niente virgole ballerine. */
+fun formatMoney(cents: Long): String = eur(cents / 100.0)
 
 private val DATE_SHORT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
@@ -480,7 +485,7 @@ fun OrganicToast(text: String, modifier: Modifier = Modifier) {
             .padding(horizontal = 16.dp, vertical = 13.dp),
     ) {
         Icon(
-            imageVector = androidx.compose.material.icons.Icons.Default.Check,
+            imageVector = Icons.Default.Check,
             contentDescription = null,
             tint = Organic.accent2300,
             modifier = Modifier.size(17.dp),

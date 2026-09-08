@@ -109,13 +109,16 @@ fun WhatsAppSheet(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier.padding(top = 10.dp, bottom = 14.dp),
             ) {
-                OutlinePill(stringResource(R.string.wa_sheet_paste)) {
-                    val pasted = readClipboardText(context)
-                    if (!pasted.isNullOrBlank()) {
-                        text = if (text.isBlank()) pasted else text.trimEnd() + "\n" + pasted
-                    }
-                }
-                OutlinePill(stringResource(R.string.wa_sheet_clear)) { text = "" }
+                OutlinePill(
+                    text = stringResource(R.string.wa_sheet_paste),
+                    onClick = {
+                        val pasted = readClipboardText(context)
+                        if (!pasted.isNullOrBlank()) {
+                            text = if (text.isBlank()) pasted else text.trimEnd() + "\n" + pasted
+                        }
+                    },
+                )
+                OutlinePill(text = stringResource(R.string.wa_sheet_clear), onClick = { text = "" })
             }
 
             Text(

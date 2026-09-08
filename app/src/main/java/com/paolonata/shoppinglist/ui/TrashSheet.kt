@@ -94,7 +94,10 @@ fun TrashSheet(
                                 color = Organic.neutral700,
                             )
                         }
-                        OutlinePill(stringResource(R.string.trash_restore)) { onRestore(r.id) }
+                        OutlinePill(
+                            text = stringResource(R.string.trash_restore),
+                            onClick = { onRestore(r.id) },
+                        )
                         OutlinePill(
                             text = stringResource(R.string.trash_purge),
                             onClick = { onPurge(r.id) },

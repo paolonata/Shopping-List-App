@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.paolonata.shoppinglist.R
+import com.paolonata.shoppinglist.ui.theme.formatMoney
 import com.paolonata.shoppinglist.data.Receipt
 import com.paolonata.shoppinglist.data.ReceiptCategoryEntity
 import com.paolonata.shoppinglist.data.ReceiptWithPhotos
