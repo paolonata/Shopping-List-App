@@ -86,6 +86,9 @@ class ReceiptRepository(
 
     fun observeById(id: Long): Flow<ReceiptWithPhotos?> = dao.observeById(id)
 
+    /** Gli id di tutto quello che esiste, cestino compreso. */
+    suspend fun allIncludingTrash(): List<Long> = withContext(Dispatchers.IO) { dao.allIds() }
+
     suspend fun getById(id: Long): ReceiptWithPhotos? = dao.getById(id)
 
     /**
@@ -109,6 +112,35 @@ class ReceiptRepository(
         // riempiono da soli quando arriva. Se ML Kit ci mette un secondo,
         // quel secondo non lo aspetta nessuno.
         if (parsed == null) photos.firstOrNull()?.let { fillFromPhoto(id, File(it.path)) }
+        id
+    }
+
+    /**
+     * Lo scontrino creato dal foglio "Nuovo scontrino": prima si salva la
+     * foto come sempre (e la lettura automatica riempie quello che può),
+     * poi si scrive sopra quello che la persona ha scritto a mano. Quello
+     * che ha scritto lei vince sempre su quello che ha letto la macchina.
+     */
+    suspend fun createManual(
+        sources: List<Uri>,
+        title: String,
+        amount: Double?,
+        categoryId: String,
+        returnDays: Int?,
+    ): Long = withContext(Dispatchers.IO) {
+        val id = createFrom(sources)
+        val current = dao.getById(id)?.receipt ?: return@withContext id
+        val purchase = runCatching { LocalDate.parse(current.date) }.getOrElse { LocalDate.now() }
+        dao.update(
+            current.copy(
+                title = title.ifBlank { current.title },
+                amountCents = Receipt.centsOf(amount) ?: current.amountCents,
+                categoryId = categoryId,
+                returnUntil = returnDays?.let { purchase.plusDays(it.toLong()).toString() } ?: current.returnUntil,
+                returnDays = returnDays ?: current.returnDays,
+                updatedAt = System.currentTimeMillis(),
+            ),
+        )
         id
     }
 

@@ -1,47 +1,15 @@
 <resources>
     <string name="app_name">Lista Spesa da WhatsApp</string>
 
-    <string name="home_title">Spesa</string>
-    <string name="home_empty_title">Ancora nulla in lista.</string>
-    <string name="home_empty_body">Scrivi il primo articolo qui sotto, o incolla un messaggio da WhatsApp.</string>
-    <string name="home_add_whatsapp">Da WhatsApp</string>
     <string name="quick_add_hint">Aggiungi al carrello</string>
-    <string name="share_title">Lista della spesa:</string>
     <string name="share_chooser">Condividi la lista</string>
-    <string name="home_menu_clear_checked">Rimuovi quelli presi</string>
-    <string name="home_menu_clear_all">Svuota lista</string>
-    <string name="home_section_to_buy">Da prendere</string>
-    <string name="home_section_in_cart">Presi</string>
-    <string name="home_delete_item_cd">Elimina</string>
-    <string name="home_progress">%1$d / %2$d</string>
-    <string name="home_progress_label">presi</string>
-    <string name="theme_menu">Tema</string>
     <string name="theme_auto">Automatico (sistema)</string>
     <string name="theme_light">Chiaro</string>
     <string name="theme_dark">Scuro</string>
-    <string name="theme_olive">Olivastro</string>
-    <string name="settings_menu_cd">Altre opzioni</string>
-    <string name="section_add_item_cd">Aggiungi articolo</string>
 
-    <string name="add_title">Nuova lista</string>
-    <string name="add_hint">Es: Acqua bambini, pollo pannato/nuggets, iogurt Danone, 2 pere, 2 mele…</string>
-    <string name="add_paste_button">Incolla</string>
-    <string name="add_clear_button">Cancella</string>
-    <string name="add_dictate_button">Detta</string>
     <string name="add_dictate_prompt">Dì la lista, o un articolo alla volta</string>
-    <string name="add_dictate_hint">Suggerimento: detta un articolo alla volta per separarli meglio. Puoi comunque modificare il testo prima di confermare.</string>
     <string name="add_speech_unavailable">Riconoscimento vocale non disponibile su questo telefono</string>
-    <string name="add_preview_empty">Scrivi o incolla del testo per vedere l\'anteprima della lista.</string>
-    <string name="add_cancel_button">Annulla</string>
 
-    <string name="quantity_decrease_cd">Diminuisci quantità</string>
-    <string name="quantity_increase_cd">Aumenta quantità</string>
-    <string name="edit_confirm_cd">Salva</string>
-    <string name="edit_cancel_cd">Annulla</string>
-    <string name="reorder_handle_cd">Trascina per riordinare</string>
-
-    <string name="notification_menu_toggle_on">Attiva lista in lock screen</string>
-    <string name="notification_menu_toggle_off">Disattiva lista in lock screen</string>
     <string name="notification_enabled_toast">Lista attiva in lock screen. Se non la vedi a schermo bloccato, autorizza le notifiche di questa app nelle impostazioni del telefono.</string>
     <string name="notification_disabled_toast">Lista in lock screen disattivata</string>
     <string name="notification_permission_denied">Per la lista in lock screen serve il permesso di mostrare notifiche</string>
@@ -53,8 +21,6 @@
     <string name="notification_n_left">%1$d ancora da prendere</string>
     <string name="notification_check_action">%1$s</string>
 
-    <string name="reminder_menu_item">Promemoria lista</string>
-    <string name="reminder_menu_item_active">Promemoria: %1$s</string>
     <string name="reminder_dialog_title">Quando vuoi il promemoria?</string>
     <string name="reminder_option_tonight">Stasera · %1$s</string>
     <string name="reminder_option_tomorrow_morning">Domani mattina · %1$s</string>
@@ -70,22 +36,12 @@
     <string name="reminder_channel_name">Promemoria lista (singolo)</string>
     <string name="reminder_channel_description">Notifica singola per il promemoria della lista della spesa che hai impostato tu</string>
     <!-- Scontrini -->
-    <string name="section_list">Lista</string>
-    <string name="section_receipts">Scontrini</string>
     <string name="receipt_untitled">Scontrino</string>
-    <string name="receipts_take_photo">Scatta</string>
-    <string name="receipts_from_gallery">Galleria</string>
-    <string name="receipts_empty_title">Nessuno scontrino</string>
-    <string name="receipts_empty_text">Fotografane uno: resta qui, sul telefono, anche senza rete.</string>
     <string name="receipts_saved_toast">Scontrino salvato</string>
-    <string name="receipts_photo_failed">Non sono riuscito a leggere la foto</string>
-    <string name="deadline_one">Il %1$s scade %2$s</string>
-    <string name="deadline_many">%1$d scadenze vicine · la prima %2$s</string>
     <string name="back">Indietro</string>
     <string name="save">Salva</string>
     <string name="cancel">Annulla</string>
     <string name="undo">Annulla</string>
-    <string name="filter_all">Tutte</string>
     <string name="receipt_share">Condividi scontrino</string>
     <string name="receipt_delete">Elimina</string>
     <string name="receipt_delete_title">Eliminare lo scontrino?</string>
@@ -105,7 +61,6 @@
     <string name="receipt_return_mark_done">Fatto</string>
     <string name="preset_days">%1$d giorni</string>
     <string name="preset_years">%1$d anni</string>
-    <string name="receipt_reminders_cd">Avvisi per le scadenze</string>
     <string name="receipt_reminders_on">Ti avviso quando una scadenza si avvicina</string>
     <string name="receipt_reminders_off">Avvisi per le scadenze disattivati</string>
     <string name="receipt_deadline_notification_one">Il %1$s %2$s</string>
@@ -123,7 +78,6 @@
     <string name="receipt_ocr_text_hint">Cosa ha visto la macchina</string>
     <string name="receipt_ocr_share">Condividi il testo</string>
     <string name="close">Chiudi</string>
-    <string name="receipts_from_pdf">Importa un PDF</string>
     <string name="receipts_pdf_failed">Non sono riuscito ad aprire il PDF</string>
     <string name="receipt_field_place">Luogo</string>
     <string name="receipt_place_none">— cerca dove</string>
@@ -135,4 +89,165 @@
     <string name="place_here">Sono qui</string>
     <string name="place_intro">Cerca il negozio per nome, oppure tocca il mirino per usare dove ti trovi. Serve la connessione: è l\'unica cosa dell\'app che esce in rete.</string>
     <string name="place_nothing">Nessun risultato. Prova col nome del negozio e la città, o con l\'indirizzo.</string>
+
+    <!-- ══ Spesa ══ -->
+    <string name="spesa_title">Spesa</string>
+    <string name="spesa_subtitle">la lista da spuntare al supermercato</string>
+    <string name="spesa_hero_label">nel carrello</string>
+    <string name="spesa_hero_label_empty">lista vuota</string>
+    <string name="spesa_hero_of_total">/ %1$d presi</string>
+    <string name="spesa_paste_whatsapp">Incolla da WhatsApp</string>
+    <string name="spesa_clear_checked">Rimuovi quelli presi</string>
+    <string name="spesa_share">Condividi la lista</string>
+    <string name="spesa_clear_all">Svuota lista</string>
+    <string name="spesa_all_done_title">Tutto preso</string>
+    <string name="spesa_all_done_text">Fotografa lo scontrino: finisce nell\'archivio con importo e scadenza del reso.</string>
+    <string name="spesa_empty_title">Ancora nulla in lista.</string>
+    <string name="spesa_empty_text">Scrivi il primo articolo qui sotto, o incolla un messaggio da WhatsApp.</string>
+    <string name="spesa_section_to_buy">Da prendere</string>
+    <string name="spesa_section_taken">Presi</string>
+    <string name="spesa_listening">Dì la lista, o un articolo alla volta</string>
+    <string name="spesa_delete_cd">Elimina</string>
+    <string name="spesa_dictate_cd">Detta l\'articolo</string>
+    <string name="spesa_add_cd">Aggiungi articolo</string>
+    <string name="spesa_shared_toast">Lista della spesa condivisa</string>
+    <string name="spesa_checked_removed_toast">Articoli presi rimossi</string>
+    <string name="spesa_cleared_toast">Lista svuotata</string>
+
+    <!-- ══ Foglio "Nuova lista" (import da WhatsApp) ══ -->
+    <string name="wa_sheet_title">Nuova lista</string>
+    <string name="wa_sheet_subtitle">Incolla il messaggio della spesa: virgole, quantità e note tra parentesi diventano articoli distinti.</string>
+    <string name="wa_sheet_placeholder">Es: Acqua bambini, pollo pannato/nuggets, iogurt Danone, 2 pere, 2 mele…</string>
+    <string name="wa_sheet_paste">Incolla</string>
+    <string name="wa_sheet_clear">Cancella</string>
+    <string name="wa_sheet_empty">Scrivi o incolla del testo per vedere l\'anteprima della lista.</string>
+    <string name="wa_sheet_confirm_empty">Aggiungi alla lista</string>
+
+    <!-- ══ Scontrini ══ -->
+    <string name="tab_spesa">Spesa</string>
+    <string name="tab_receipts">Scontrini</string>
+    <string name="tab_deadlines">Scadenze</string>
+    <string name="tab_stats">Statistiche</string>
+    <string name="tab_settings">Impostazioni</string>
+    <string name="fab_new_receipt_cd">Aggiungi scontrino</string>
+    <string name="receipts_home_title">Invoice Wallet</string>
+    <string name="receipts_home_subtitle">i tuoi scontrini al sicuro</string>
+    <string name="receipts_search_cd">Cerca</string>
+    <string name="receipts_search_hint">Cerca esercente, nota, importo…</string>
+    <string name="receipts_layout_cd">Cambia vista</string>
+    <string name="receipts_untitled">Scontrino</string>
+    <string name="receipts_alert_many">%1$d scadenze imminenti · ultimi giorni per resi e cambi</string>
+    <string name="receipts_spesa_strip_one">1 articolo ancora da prendere in lista</string>
+    <string name="receipts_spesa_strip_many">%1$d articoli ancora da prendere in lista</string>
+    <string name="receipts_total_archive">Totale archivio</string>
+    <string name="receipts_total_results">Totale dei risultati</string>
+    <string name="receipts_count_one">1 scontrino</string>
+    <string name="receipts_count_many">%1$d scontrini</string>
+    <string name="receipts_average">media %1$s</string>
+    <string name="receipts_delta">%1$s%% su %2$s</string>
+    <string name="receipts_no_amounts">importi non indicati</string>
+    <string name="receipts_missing_one">1 senza importo</string>
+    <string name="receipts_missing_many">%1$d senza importo</string>
+    <string name="receipts_month_all">Tutti</string>
+    <string name="receipts_cat_all">Tutte</string>
+    <string name="receipts_cat_fav">⭐ Preferiti</string>
+    <string name="receipts_add_amount">+ importo</string>
+    <string name="receipts_chip_expired">scaduto</string>
+    <string name="receipts_chip_today">oggi</string>
+    <string name="receipts_chip_one_day">1 giorno</string>
+    <string name="receipts_chip_days">%1$d giorni</string>
+    <string name="receipts_results_one">1 risultato per «%1$s», in tutto l\'archivio</string>
+    <string name="receipts_results_many">%1$d risultati per «%2$s», in tutto l\'archivio</string>
+    <string name="receipts_no_results">Nessuno scontrino per «%1$s»</string>
+    <string name="receipts_empty_filters">Nessuno scontrino con questi filtri. Prova a cambiare mese o categoria.</string>
+
+    <!-- ══ Nuovo scontrino ══ -->
+    <string name="new_receipt_title">Nuovo scontrino</string>
+    <string name="new_receipt_subtitle">La foto resta sul telefono. Il resto lo scrivi tu, o non lo scrivi affatto.</string>
+    <string name="new_receipt_camera">Scatta una foto</string>
+    <string name="new_receipt_gallery">Dalla galleria</string>
+    <string name="new_receipt_pdf">Importa un PDF</string>
+    <string name="new_receipt_photo_one">1 foto pronta</string>
+    <string name="new_receipt_photo_many">%1$d foto pronte</string>
+    <string name="new_receipt_amount">Importo</string>
+    <string name="new_receipt_where">Dove / cosa</string>
+    <string name="new_receipt_where_hint">Es. Supermercato, benzina, farmacia…</string>
+    <string name="new_receipt_category">Categoria</string>
+    <string name="new_receipt_return_title">↩️ Reso o cambio entro</string>
+    <string name="new_receipt_return_sub">Ti avviso nella scheda Scadenze</string>
+    <string name="new_receipt_days">%1$d giorni</string>
+    <string name="new_receipt_save">Salva</string>
+
+    <!-- ══ Scadenze ══ -->
+    <string name="deadlines_title">Scadenze</string>
+    <string name="deadlines_subtitle">Fino a quando puoi fare un reso, un cambio o usare la garanzia.</string>
+    <string name="deadlines_tab_all">Tutte</string>
+    <string name="deadlines_tab_returns">Resi e cambi</string>
+    <string name="deadlines_tab_warranty">Garanzia</string>
+    <string name="deadlines_counter_urgent">in scadenza entro 7 giorni</string>
+    <string name="deadlines_counter_valid">ancora validi</string>
+    <string name="deadlines_note_urgent_title">Ultimi giorni</string>
+    <string name="deadlines_note_urgent_one">C\'è uno scontrino con il tempo quasi finito: dopo la data non puoi più fare reso o cambio.</string>
+    <string name="deadlines_note_urgent_many">Ci sono %1$d scontrini con il tempo quasi finito: dopo la data non puoi più fare reso o cambio.</string>
+    <string name="deadlines_note_calm_title">Tutto tranquillo</string>
+    <string name="deadlines_note_calm_text">Nessuna scadenza nei prossimi sette giorni.</string>
+    <string name="deadlines_section_recent">Scaduti di recente</string>
+    <string name="deadlines_section_today">Oggi e domani</string>
+    <string name="deadlines_section_week">Entro una settimana</string>
+    <string name="deadlines_section_month">Entro un mese</string>
+    <string name="deadlines_section_later">Più avanti</string>
+    <string name="deadlines_prep_return">entro il</string>
+    <string name="deadlines_prep_warranty">fino al</string>
+    <string name="deadlines_empty">Niente da tenere d\'occhio: nessuno scontrino ha un reso o una garanzia in corso.</string>
+
+    <!-- ══ Statistiche ══ -->
+    <string name="stats_title">Statistiche</string>
+    <string name="stats_tab_month">Mese</string>
+    <string name="stats_tab_year">Anno</string>
+    <string name="stats_tab_all">Sempre</string>
+    <string name="stats_range_month">questo mese</string>
+    <string name="stats_range_year">nel %1$d</string>
+    <string name="stats_range_all">in totale</string>
+    <string name="stats_sub_one">spesi %1$s · 1 scontrino</string>
+    <string name="stats_sub_many">spesi %1$s · %2$d scontrini</string>
+    <string name="stats_average">scontrino medio</string>
+    <string name="stats_top">il più caro</string>
+    <string name="stats_top_with">il più caro · %1$s</string>
+    <string name="stats_trend_title">Andamento ultimi 12 mesi</string>
+    <string name="stats_categories_title">Dove vanno i soldi (%1$s)</string>
+    <string name="stats_no_data">Ancora nessun importo in questo periodo.</string>
+
+    <!-- ══ Impostazioni ══ -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_section_reminders">Promemoria</string>
+    <string name="settings_lockscreen_title">Lista in lock screen</string>
+    <string name="settings_lockscreen_sub">La spesa sempre visibile in notifica, spuntabile senza sbloccare</string>
+    <string name="settings_reminder_title">Promemoria lista</string>
+    <string name="settings_reminder_sub">Una notifica all\'ora che scegli tu</string>
+    <string name="settings_reminder_active">Attivo: %1$s</string>
+    <string name="settings_deadline_reminders_title">Avvisi scadenze</string>
+    <string name="settings_deadline_reminders_sub">Ogni mattina, se un reso o una garanzia sta per finire</string>
+    <string name="settings_section_data">Sicurezza dei dati</string>
+    <string name="settings_trash_title">Cestino</string>
+    <string name="settings_trash_empty">Recupera quello che hai eliminato per sbaglio</string>
+    <string name="settings_trash_count">%1$d scontrini ancora recuperabili</string>
+    <string name="settings_section_look">Aspetto</string>
+    <string name="settings_section_storage">Spazio occupato</string>
+    <string name="settings_storage_sub">%1$d scontrini · %2$d foto su questo telefono</string>
+    <string name="settings_delete_all">Elimina tutti i dati</string>
+    <string name="settings_delete_all_title">Eliminare tutto?</string>
+    <string name="settings_delete_all_text">Spariscono la lista della spesa, tutti gli scontrini e le loro foto, cestino compreso. Non si torna indietro.</string>
+    <string name="settings_delete_all_confirm">Elimina tutto</string>
+    <string name="settings_delete_all_cancel">Annulla</string>
+    <string name="settings_deleted_all_toast">Eliminato tutto</string>
+    <string name="settings_privacy_title">Privacy totale</string>
+    <string name="settings_privacy_text">Foto e importi restano dentro questo telefono: nessun account, nessun caricamento su internet.</string>
+    <string name="settings_footer">Lista Spesa e Scontrini · redesign Organic</string>
+
+    <!-- ══ Cestino ══ -->
+    <string name="trash_title">Cestino</string>
+    <string name="trash_subtitle">Quello che hai eliminato resta qui qualche giorno, poi sparisce da solo.</string>
+    <string name="trash_empty">Il cestino è vuoto.</string>
+    <string name="trash_restore">Ripristina</string>
+    <string name="trash_purge">Elimina</string>
 </resources>

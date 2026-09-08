@@ -28,15 +28,34 @@ Progetto Gradle multi-modulo (Kotlin, version catalog in `gradle/libs.versions.t
     puntate/numerate, unione dei duplicati sommando le quantità.
   - Ha test JUnit in `parser/src/test/...` — **compilabili e testabili senza
     Android SDK** (`./gradlew :parser:test`). Usare questi per validare la logica.
+- **`receipts/`** — modulo Kotlin/JVM puro per gli scontrini: `ReceiptTextParser`
+  (importo/data/esercente/categoria dal testo letto in foto), `Deadlines`
+  (resi e garanzie: date, stato in parole), `Place` (formattazione indirizzi).
+  Anche questo testabile senza Android SDK.
 - **`app/`** — app Android, Kotlin + Jetpack Compose (Material 3).
   - `data/` — Room: `ShoppingItem` (entity), `ShoppingItemDao`,
     `ShoppingListDatabase`, `ShoppingListRepository` (unisce i duplicati non
     ancora spuntati invece di duplicarli).
-  - `ui/` — `ShoppingListViewModel`, `HomeScreen`, `AddFromTextScreen`,
-    `ui/theme/Theme.kt`.
-  - `MainActivity` — gestisce anche l'intent `ACTION_SEND` (text/plain) con cui
-    WhatsApp condivide il testo → apre direttamente la schermata di anteprima.
-    Transizione tra schermate con `Crossfade`.
+  - `ui/` — dopo il redesign "Organic" (settembre 2026) le schermate sono una
+    per file, tutte figlie della stessa tab bar:
+    - `SpesaScreen` — la lista della spesa (hero del progresso, sezioni "Da
+      prendere"/"Presi", barra di aggiunta rapida con stepper e dettatura).
+    - `WhatsAppSheet` — il foglio "Nuova lista": incolla il messaggio, anteprima
+      live del parser, conferma.
+    - `ReceiptsHomeScreen` — l'archivio scontrini (totale del periodo con
+      sparkline, filtri mese/categoria, griglia o elenco).
+    - `DeadlinesScreen`, `StatsScreen`, `SettingsScreen`, `TrashSheet`,
+      `NewReceiptSheet` — le altre schede e i due fogli.
+    - `ReceiptDetailScreen`, `CategoryPicker`, `PlacePickerDialog` — il
+      dettaglio di uno scontrino, ereditato dal modulo scontrini.
+    - `AppShell.kt` — `AppTab` (le cinque schede), la tab bar e il FAB.
+    - `ui/theme/` — `Theme.kt` (i token del design system) e `OrganicUi.kt`
+      (i mattoni condivisi: pillole, chip, segmented, fogli, toast, formattatori
+      di date e importi).
+  - `MainActivity` — il guscio: cinque schede con `Crossfade`, FAB, toast,
+    overlay del dettaglio e i fogli. Gestisce anche l'intent `ACTION_SEND`
+    (text/plain) con cui WhatsApp condivide il testo → apre il foglio
+    "Nuova lista" già compilato.
 
 ### Aggiunta (additiva, mai distruttiva)
 - `ShoppingListRepository.addParsedItems` è **solo additivo**: unisce i duplicati
@@ -405,7 +424,60 @@ dell'utente ("colori più neutri, moderna, chiaro e scuro curati"):
   + spring bouncy su `graphicsLayer` scale); testo che sfuma di colore; barra di
   avanzamento animata; FAB con entrata in scala; `Crossfade` tra schermate.
 
-### Tema "Olivastro" (quarta opzione oltre Auto/Chiaro/Scuro)
+### v8 — redesign "Organic" (settembre 2026, quello attuale)
+
+L'utente ha portato da **Claude Design** un pacchetto di handoff
+(`Spesa e Scontrini.dc.html` + il design system `organic`) e ha chiesto di
+implementarlo *esattamente*. È il primo redesign nato da un disegno vero e
+non da uno screenshot di riferimento, e unisce le due metà dell'app —
+la lista della spesa e l'archivio scontrini — in un solo prodotto.
+
+- **Design system Organic**: fondo crema `#F5EAD8`, testo `#201E1D`, accento
+  terracotta `#C67139` e secondo accento salvia `#7A8A5E`, ciascuno con la sua
+  rampa 100→900 generata in OKLCH. I raggi crescono: 8 / 16 / 28 dp, e i
+  bottoni sono pillole piene (999 dp). Tutto sta in `Theme.kt` dentro
+  `OrganicPalette`, esposta ai composable dalla proprietà `Organic`: il
+  `ColorScheme` di Material 3 ha i *ruoli*, non i *gradini*, e le schermate
+  hanno bisogno dei gradini.
+- **Tipografia**: **Caprasimo** (una sola grandezza, display) sui titoli e
+  sui numeri grandi, **Figtree** (400/600/700) per tutto il resto. I `.ttf`
+  arrivano da Google Fonts e stanno in `res/font/`.
+- **Cinque schede** invece delle due sezioni di prima: Spesa 🛒, Scontrini 🧾,
+  Scadenze ⏳ (con la pallina del numero di scadenze urgenti), Statistiche 📊,
+  Impostazioni ⚙️. La scheda attiva si accende in una pastiglia: salvia per la
+  spesa, terracotta per il resto.
+- **Il ponte fra le due metà**: sugli scontrini compare la striscia "N articoli
+  ancora da prendere" che porta alla spesa; quando la spesa è tutta spuntata
+  compare "Tutto preso → fotografa lo scontrino" che apre il foglio del nuovo
+  scontrino.
+- **Tema**: restano Automatico / Chiaro / Scuro (l'"Olivastro" è stato
+  eliminato: il disegno ha un solo accento). La palette scura percorre le
+  rampe al contrario, come dice il readme del design system.
+- **Icona**: rifatta dal disegno (`Icona app.dc.html`) — lo scontrino strappato
+  con la spunta salvia su fondo terracotta. Generata renderizzando l'SVG del
+  disegno con Chromium/Playwright (`icon.py` nella scratchpad) invece che con
+  Pillow: la forma è già vettoriale nel handoff, ridisegnarla a mano sarebbe
+  stato sia più lungo sia meno fedele. Le misure piccole (48/72) usano le
+  varianti semplificate previste dal disegno stesso.
+- **Cosa è stato adattato invece che copiato**: il prototipo è una pagina web,
+  e tre cose non avevano senso trasportate di peso —
+  1. "Incolla un esempio" nel foglio della lista è diventato **"Incolla"**
+     (dagli appunti veri);
+  2. le voci "Esporta backup / Ripristina / Archiviazione protetta" delle
+     impostazioni erano segnaposto senza comportamento (nel prototipo dicono
+     "questa azione è solo accennata") e sono state sostituite dalle
+     impostazioni vere dell'app: i tre promemoria, il cestino, lo spazio
+     occupato davvero calcolato dalle foto, "elimina tutti i dati" con
+     conferma;
+  3. il riordino con trascinamento della vecchia lista è stato tolto: nel
+     disegno la riga non ha maniglia. La **modifica** di un articolo invece è
+     rimasta, sulla pressione lunga della riga.
+- **Categorie**: aggiunte le quattro che mancavano rispetto al disegno
+  (viaggi ✈️, bollette 📄, lavoro 💼, svago 🎬) con la migrazione Room 5→6.
+  `INSERT OR IGNORE` più un `UPDATE` della sola posizione: chi si era
+  rinominato una categoria non se la vede tornare com'era.
+
+### Tema "Olivastro" (rimosso nel redesign Organic, tenuto qui per storia)
 Nato dalla discussione sulla nuova icona: l'utente ha scelto la checklist in
 grigio-oliva (non nero) per l'icona, poi ha chiesto esplicitamente di portare
 quello stesso colore anche nell'app come tema selezionabile — "il tema

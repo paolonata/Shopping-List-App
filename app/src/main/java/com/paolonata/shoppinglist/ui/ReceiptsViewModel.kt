@@ -39,6 +39,10 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
     val categories: StateFlow<List<ReceiptCategoryEntity>> = repository.observeCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Quello che è stato buttato e si può ancora recuperare. */
+    val trashed: StateFlow<List<ReceiptWithPhotos>> = repository.observeTrashed()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /**
      * What is about to run out. A return already made is not a deadline
      * any more: it would keep calling for nothing.
@@ -76,6 +80,20 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
             // arriva un attimo dopo e i campi si riempiono da soli.
             val id = repository.createFrom(sources)
             onSaved(id)
+        }
+    }
+
+    /** Lo scontrino creato a mano dal foglio, con i campi già compilati. */
+    fun createManual(
+        sources: List<Uri>,
+        title: String,
+        amount: Double?,
+        categoryId: String,
+        returnDays: Int?,
+        onSaved: (Long) -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            onSaved(repository.createManual(sources, title, amount, categoryId, returnDays))
         }
     }
 
@@ -117,6 +135,26 @@ class ReceiptsViewModel(application: Application) : AndroidViewModel(application
 
     fun moveToTrash(id: Long) {
         viewModelScope.launch { repository.moveToTrash(id) }
+    }
+
+    fun restore(id: Long) {
+        viewModelScope.launch { repository.restore(id) }
+    }
+
+    fun purge(id: Long) {
+        viewModelScope.launch { repository.purge(id) }
+    }
+
+    /**
+     * Cancella davvero tutto: scontrini, foto e cestino. Serve prima di
+     * prestare o rivendere il telefono, ed è irreversibile — chi la chiama
+     * deve aver già chiesto conferma.
+     */
+    fun deleteEverything(onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            (repository.allIncludingTrash()).forEach { repository.purge(it) }
+            onDone()
+        }
     }
 
     private fun parse(iso: String): LocalDate? = runCatching { LocalDate.parse(iso) }.getOrNull()

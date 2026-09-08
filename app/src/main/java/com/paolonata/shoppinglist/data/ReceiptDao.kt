@@ -52,6 +52,9 @@ interface ReceiptDao {
     @Query("DELETE FROM receipts WHERE id = :id")
     suspend fun purge(id: Long)
 
+    @Query("SELECT id FROM receipts")
+    suspend fun allIds(): List<Long>
+
     /** Receipts binned longer than the grace period: they can go for good. */
     @Transaction
     @Query("SELECT * FROM receipts WHERE deleted_at IS NOT NULL AND deleted_at < :before")

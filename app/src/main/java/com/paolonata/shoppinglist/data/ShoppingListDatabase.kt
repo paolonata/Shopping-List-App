@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ShoppingItem::class, Receipt::class, ReceiptPhoto::class, ReceiptCategoryEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class ShoppingListDatabase : RoomDatabase() {
@@ -118,6 +118,29 @@ abstract class ShoppingListDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v5 → v6: quattro categorie in più (viaggi, bollette, lavoro,
+         * svago), che il redesign mette fra quelle di partenza. Chi le
+         * aveva già rinominate non se le vede toccare: `INSERT OR IGNORE`
+         * aggiunge solo quello che manca. "Altro" scivola in fondo, dove
+         * il disegno la vuole.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                ReceiptCategoryEntity.defaults().forEach { c ->
+                    db.execSQL(
+                        "INSERT OR IGNORE INTO `receipt_categories` " +
+                            "(`id`, `label`, `emoji`, `built_in`, `position`) VALUES (?, ?, ?, 1, ?)",
+                        arrayOf(c.id, c.label, c.emoji, c.position),
+                    )
+                    db.execSQL(
+                        "UPDATE `receipt_categories` SET `position` = ? WHERE `id` = ? AND `built_in` = 1",
+                        arrayOf(c.position, c.id),
+                    )
+                }
+            }
+        }
+
         fun getInstance(context: Context): ShoppingListDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -125,7 +148,7 @@ abstract class ShoppingListDatabase : RoomDatabase() {
                     ShoppingListDatabase::class.java,
                     "shopping_list.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     // Chi installa da zero non passa dalle migrazioni: le
                     // categorie di partenza vanno seminate anche qui.
                     .addCallback(object : RoomDatabase.Callback() {

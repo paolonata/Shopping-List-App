@@ -12,6 +12,10 @@ enum class ReceiptCategory(val id: String, val emoji: String, val label: String)
     SHOPPING("shopping", "🛍️", "Shopping"),
     HOME("casa", "🏠", "Casa"),
     HEALTH("salute", "💊", "Salute"),
+    TRAVEL("viaggi", "✈️", "Viaggi"),
+    BILLS("bollette", "📄", "Bollette"),
+    WORK("lavoro", "💼", "Lavoro"),
+    LEISURE("svago", "🎬", "Svago"),
     OTHER("altro", "🧾", "Altro");
 
     companion object {
